@@ -23,8 +23,8 @@
         </div>
       </div>
     </template>
-    <template #cell-payment_type="{ value }">
-      <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.methods.' + value, value) }}</span>
+    <template #cell-payment_type="{ value, row }">
+      <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.methods.' + value, row.payment_method_name || value) }}</span>
     </template>
     <template #cell-status="{ value }">
       <OrderStatusBadge :status="value" />
