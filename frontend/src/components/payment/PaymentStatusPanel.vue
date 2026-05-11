@@ -69,6 +69,46 @@
 
     <!-- ═══ Active States: QR or Popup waiting ═══ -->
 
+    <!-- Offline payment: waits for admin confirmation -->
+    <template v-else-if="isOfflinePayment">
+      <div class="card overflow-hidden border-teal-200 bg-gradient-to-br from-teal-50 to-emerald-50 p-6 dark:border-teal-800/60 dark:from-teal-950/40 dark:to-emerald-950/20">
+        <div class="flex flex-col items-center space-y-4 py-4 text-center">
+          <div class="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300">
+            <Icon name="dollar" size="lg" />
+          </div>
+          <div>
+            <p class="text-lg font-bold text-gray-900 dark:text-white">{{ t('payment.offline.title') }}</p>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">{{ t('payment.offline.hint') }}</p>
+          </div>
+          <div class="w-full rounded-xl bg-white/70 p-4 text-left shadow-sm ring-1 ring-teal-100 dark:bg-dark-800/70 dark:ring-teal-900/60">
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.orderId') }}</span>
+                <span class="font-medium text-gray-900 dark:text-white">#{{ props.orderId }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.paymentMethod') }}</span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ t('payment.methods.offline') }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.status') }}</span>
+                <span class="font-medium text-teal-700 dark:text-teal-300">{{ t('payment.offline.waiting') }}</span>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.offline.pollingHint') }}</p>
+        </div>
+      </div>
+      <div class="card p-4 text-center">
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.qr.expiresIn') }}</p>
+        <p class="mt-1 text-2xl font-bold tabular-nums text-gray-900 dark:text-white">{{ countdownDisplay }}</p>
+        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ t('payment.offline.waitingPayment') }}</p>
+      </div>
+      <button class="btn btn-secondary w-full" :disabled="cancelling" @click="handleCancel">
+        {{ cancelling ? t('common.processing') : t('payment.qr.cancelOrder') }}
+      </button>
+    </template>
+
     <!-- QR Code Mode -->
     <template v-else-if="qrUrl">
       <div class="card p-6">
@@ -176,6 +216,7 @@ const outcome = ref<PaymentOutcome | null>(null)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
+const isOfflinePayment = computed(() => props.paymentType === 'offline')
 const isAlipay = computed(() => props.paymentType.includes('alipay'))
 const isWxpay = computed(() => props.paymentType.includes('wxpay'))
 

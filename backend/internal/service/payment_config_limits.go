@@ -84,6 +84,12 @@ func (s *PaymentConfigService) GetMethodLimits(ctx context.Context, types []stri
 	for _, pt := range types {
 		var matching []*dbent.PaymentProviderInstance
 		for _, inst := range instances {
+			if pt == payment.TypeOffline {
+				if inst.ProviderKey == payment.TypeOffline {
+					matching = append(matching, inst)
+				}
+				continue
+			}
 			if payment.InstanceSupportsType(inst.SupportedTypes, pt) {
 				matching = append(matching, inst)
 			}
@@ -183,6 +189,10 @@ func pcGroupByPaymentType(instances []*dbent.PaymentProviderInstance) map[string
 		// Stripe provider: all sub-types → single "stripe" group
 		if inst.ProviderKey == payment.TypeStripe {
 			add(payment.TypeStripe, inst)
+			continue
+		}
+		if inst.ProviderKey == payment.TypeOffline {
+			add(payment.TypeOffline, inst)
 			continue
 		}
 		for _, t := range splitTypes(inst.SupportedTypes) {

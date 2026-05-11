@@ -300,6 +300,9 @@ func buildPaymentOrderProviderSnapshot(sel *payment.InstanceSelection, req Creat
 		}
 		snapshot["currency"] = paymentProviderConfigCurrency(providerKey, sel.Config)
 	}
+	if providerKey == payment.TypeOffline {
+		snapshot["currency"] = payment.DefaultPaymentCurrency
+	}
 
 	if len(snapshot) == 1 {
 		return nil

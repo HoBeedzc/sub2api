@@ -424,6 +424,8 @@ func buildVisibleMethodSourceAvailability(instances []*dbent.PaymentProviderInst
 					available[VisibleMethodSourceEasyPayWechat] = true
 				}
 			}
+		case payment.TypeOffline:
+			available[payment.TypeOffline] = true
 		}
 	}
 	return available
@@ -433,6 +435,9 @@ func applyVisibleMethodRoutingToEnabledTypes(base []string, vals map[string]stri
 	shouldExpose := map[string]bool{
 		payment.TypeAlipay: visibleMethodShouldBeExposed(payment.TypeAlipay, vals, available),
 		payment.TypeWxpay:  visibleMethodShouldBeExposed(payment.TypeWxpay, vals, available),
+	}
+	if available[payment.TypeOffline] {
+		shouldExpose[payment.TypeOffline] = true
 	}
 
 	seen := make(map[string]struct{}, len(base)+2)

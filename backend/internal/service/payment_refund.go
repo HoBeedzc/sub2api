@@ -323,6 +323,10 @@ func (s *PaymentService) ExecuteRefund(ctx context.Context, p *RefundPlan) (*Ref
 }
 
 func (s *PaymentService) gwRefund(ctx context.Context, p *RefundPlan) error {
+	if payment.GetBasePaymentType(p.Order.PaymentType) == payment.TypeOffline {
+		s.writeAuditLog(ctx, p.Order.ID, "REFUND_OFFLINE_SKIP_GATEWAY", "admin", map[string]any{"detail": "skipped"})
+		return nil
+	}
 	if p.Order.PaymentTradeNo == "" {
 		s.writeAuditLog(ctx, p.Order.ID, "REFUND_NO_TRADE_NO", "admin", map[string]any{"detail": "skipped"})
 		return nil

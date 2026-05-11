@@ -52,6 +52,13 @@ func TestValidateProviderRequest(t *testing.T) {
 			wantErr:        false,
 		},
 		{
+			name:           "valid offline provider",
+			providerKey:    payment.TypeOffline,
+			providerName:   "Offline Collection",
+			supportedTypes: payment.TypeOffline,
+			wantErr:        false,
+		},
+		{
 			name:           "valid alipay provider",
 			providerKey:    "alipay",
 			providerName:   "Alipay Direct",
@@ -157,6 +164,10 @@ func TestIsSensitiveProviderConfigField(t *testing.T) {
 		{payment.TypeAirwallex, "apiBase", false},
 		{payment.TypeAirwallex, "accountId", false},
 		{payment.TypeAirwallex, "currency", false},
+
+		// Offline
+		{payment.TypeOffline, "reference", false},
+		{payment.TypeOffline, "secretKey", false},
 
 		// Unknown provider: never sensitive
 		{"unknown", "secretKey", false},

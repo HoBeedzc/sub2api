@@ -26,6 +26,10 @@
               <Icon name="eye" size="sm" />
               {{ t('common.view') }}
             </button>
+            <button v-if="row.payment_type === 'offline' && row.status === 'PENDING'" @click="openOfflineConfirmDialog(row)" class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-900/20">
+              <Icon name="check" size="sm" />
+              {{ t('payment.admin.confirmOffline') }}
+            </button>
             <button v-if="row.status === 'PENDING'" @click="handleCancelOrder(row)" class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-yellow-600 hover:bg-yellow-50 dark:text-yellow-400 dark:hover:bg-yellow-900/20">
               <Icon name="x" size="sm" />
               {{ t('payment.orders.cancel') }}
@@ -64,7 +68,7 @@
           <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.orders.status') }}</p><OrderStatusBadge :status="selectedOrder.status" /></div>
           <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.orders.amount') }}</p><p class="text-sm font-medium text-gray-900 dark:text-white">{{ selectedOrder.order_type === 'balance' ? '$' : '¥' }}{{ selectedOrder.amount.toFixed(2) }}</p></div>
           <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.orders.payAmount') }}</p><p class="text-sm font-medium text-gray-900 dark:text-white">¥{{ selectedOrder.pay_amount.toFixed(2) }}</p></div>
-          <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.orders.paymentMethod') }}</p><p class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.methods.' + selectedOrder.payment_type, selectedOrder.payment_type) }}</p></div>
+          <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.orders.paymentMethod') }}</p><p class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.methods.' + selectedOrder.payment_type, selectedOrder.payment_method_name || selectedOrder.payment_type) }}</p></div>
           <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.admin.feeRate') }}</p><p class="text-sm text-gray-700 dark:text-gray-300">{{ selectedOrder.fee_rate }}%</p></div>
           <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.orders.createdAt') }}</p><p class="text-sm text-gray-700 dark:text-gray-300">{{ formatDateTime(selectedOrder.created_at) }}</p></div>
           <div><p class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.admin.expiresAt') }}</p><p class="text-sm text-gray-700 dark:text-gray-300">{{ formatDateTime(selectedOrder.expires_at) }}</p></div>
@@ -108,6 +112,38 @@
     </BaseDialog>
 
     <AdminRefundDialog :show="showRefundDialog" :order="selectedOrder" :submitting="refundSubmitting" @confirm="handleRefund" @cancel="showRefundDialog = false" />
+
+    <BaseDialog :show="showOfflineConfirmDialog" :title="t('payment.admin.confirmOffline')" width="narrow" @close="closeOfflineConfirmDialog">
+      <div v-if="selectedOrder" class="space-y-4">
+        <div class="rounded-xl bg-gray-50 p-4 dark:bg-dark-800">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.orderId') }}</span>
+            <span class="font-mono text-gray-900 dark:text-white">#{{ selectedOrder.id }}</span>
+          </div>
+          <div class="mt-2 flex justify-between text-sm">
+            <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.payAmount') }}</span>
+            <span class="font-medium text-gray-900 dark:text-white">¥{{ selectedOrder.pay_amount.toFixed(2) }}</span>
+          </div>
+        </div>
+        <p class="text-sm text-gray-600 dark:text-gray-300">{{ t('payment.admin.confirmOfflineHint') }}</p>
+        <div>
+          <label class="input-label">{{ t('payment.admin.offlineReference') }}</label>
+          <input v-model="offlineConfirmForm.reference" class="input mt-1" :placeholder="t('payment.admin.offlineReferencePlaceholder')" />
+        </div>
+        <div>
+          <label class="input-label">{{ t('payment.admin.offlineNote') }}</label>
+          <textarea v-model="offlineConfirmForm.note" rows="3" class="input mt-1" :placeholder="t('payment.admin.offlineNotePlaceholder')" />
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <button class="btn btn-secondary" @click="closeOfflineConfirmDialog">{{ t('common.cancel') }}</button>
+          <button class="btn btn-primary" :disabled="offlineConfirmSubmitting" @click="handleConfirmOfflinePayment">
+            {{ offlineConfirmSubmitting ? t('common.processing') : t('payment.admin.confirmOffline') }}
+          </button>
+        </div>
+      </template>
+    </BaseDialog>
   </AppLayout>
 </template>
 
@@ -148,6 +184,9 @@ const selectedOrder = ref<PaymentOrder | null>(null)
 const showDetailDialog = ref(false)
 const showRefundDialog = ref(false)
 const refundSubmitting = ref(false)
+const showOfflineConfirmDialog = ref(false)
+const offlineConfirmSubmitting = ref(false)
+const offlineConfirmForm = reactive({ reference: '', note: '' })
 const orderAuditLogs = ref<AuditLog[]>([])
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -193,6 +232,7 @@ const paymentTypeFilterOptions = computed(() => [
   { value: 'wxpay', label: t('payment.methods.wxpay') },
   { value: 'stripe', label: t('payment.methods.stripe') },
   { value: 'airwallex', label: t('payment.methods.airwallex') },
+  { value: 'offline', label: t('payment.methods.offline') },
 ])
 
 const orderTypeFilterOptions = computed(() => [
@@ -221,6 +261,37 @@ async function handleCancelOrder(order: PaymentOrder) {
 async function handleRetryOrder(order: PaymentOrder) {
   try { await adminPaymentAPI.retryRecharge(order.id); appStore.showSuccess(t('payment.admin.retrySuccess')); loadOrders() }
   catch (err: unknown) { appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error'))) }
+}
+
+function openOfflineConfirmDialog(order: PaymentOrder) {
+  selectedOrder.value = order
+  offlineConfirmForm.reference = ''
+  offlineConfirmForm.note = ''
+  showOfflineConfirmDialog.value = true
+}
+
+function closeOfflineConfirmDialog() {
+  if (offlineConfirmSubmitting.value) return
+  showOfflineConfirmDialog.value = false
+}
+
+async function handleConfirmOfflinePayment() {
+  if (!selectedOrder.value || offlineConfirmSubmitting.value) return
+  offlineConfirmSubmitting.value = true
+  try {
+    await adminPaymentAPI.confirmOfflinePayment(selectedOrder.value.id, {
+      amount: selectedOrder.value.pay_amount,
+      reference: offlineConfirmForm.reference,
+      note: offlineConfirmForm.note,
+    })
+    appStore.showSuccess(t('payment.admin.confirmOfflineSuccess'))
+    showOfflineConfirmDialog.value = false
+    await loadOrders()
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
+  } finally {
+    offlineConfirmSubmitting.value = false
+  }
 }
 
 function openRefundDialog(order: PaymentOrder) { selectedOrder.value = order; showRefundDialog.value = true }

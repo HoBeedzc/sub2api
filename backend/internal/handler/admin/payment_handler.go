@@ -101,6 +101,38 @@ func (h *PaymentHandler) CancelOrder(c *gin.Context) {
 	response.Success(c, gin.H{"message": msg})
 }
 
+// AdminConfirmOfflinePaymentRequest is the request body for manual offline payment confirmation.
+type AdminConfirmOfflinePaymentRequest struct {
+	Amount    float64 `json:"amount"`
+	Reference string  `json:"reference"`
+	Note      string  `json:"note"`
+}
+
+// ConfirmOfflinePayment marks a pending offline order as paid and triggers fulfillment.
+// POST /api/v1/admin/payment/orders/:id/confirm-offline
+func (h *PaymentHandler) ConfirmOfflinePayment(c *gin.Context) {
+	orderID, ok := parseIDParam(c, "id")
+	if !ok {
+		return
+	}
+
+	var req AdminConfirmOfflinePaymentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	if err := h.paymentService.AdminConfirmOfflinePayment(c.Request.Context(), orderID, service.ConfirmOfflinePaymentRequest{
+		Amount:    req.Amount,
+		Reference: req.Reference,
+		Note:      req.Note,
+	}); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"message": "offline payment confirmed"})
+}
+
 // RetryFulfillment retries fulfillment for a paid order.
 // POST /api/v1/admin/payment/orders/:id/retry
 func (h *PaymentHandler) RetryFulfillment(c *gin.Context) {
