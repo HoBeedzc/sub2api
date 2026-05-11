@@ -198,6 +198,20 @@ func TestPcGroupByPaymentType(t *testing.T) {
 			t.Fatalf("stripe with empty types should still be in stripe group, got %v", groups)
 		}
 	})
+
+	t.Run("offline instance maps only to offline group", func(t *testing.T) {
+		t.Parallel()
+		offline := makeInstance(1, payment.TypeOffline, "", "")
+		easypay := makeInstance(2, payment.TypeEasyPay, "alipay", "")
+
+		groups := pcGroupByPaymentType([]*dbent.PaymentProviderInstance{offline, easypay})
+
+		require.Len(t, groups[payment.TypeOffline], 1)
+		require.Equal(t, int64(1), groups[payment.TypeOffline][0].ID)
+		require.Empty(t, groups[payment.TypeWxpay])
+		require.Len(t, groups[payment.TypeAlipay], 1)
+		require.Equal(t, int64(2), groups[payment.TypeAlipay][0].ID)
+	})
 }
 
 func TestPcAggregateMethodCurrency(t *testing.T) {

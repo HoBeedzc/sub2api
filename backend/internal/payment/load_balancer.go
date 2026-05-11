@@ -138,6 +138,14 @@ func (lb *DefaultLoadBalancer) queryEnabledInstances(
 	var matched []*dbent.PaymentProviderInstance
 	expectedWxpayJSAPIAppID := wxpayJSAPIAppIDFromContext(ctx)
 	for _, inst := range instances {
+		// Offline orders must only bind to the manual offline provider. Empty
+		// supported_types historically means "all", which is too broad here.
+		if paymentType == TypeOffline {
+			if inst.ProviderKey == TypeOffline {
+				matched = append(matched, inst)
+			}
+			continue
+		}
 		// Stripe: match by provider_key because supported_types lists sub-types (card,link,alipay,wxpay),
 		// not "stripe" itself. The checkout page aggregates all sub-types under "stripe".
 		if paymentType == TypeStripe {
