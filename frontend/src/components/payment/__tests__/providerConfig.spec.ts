@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PAYMENT_CURRENCY_OPTIONS, PROVIDER_CONFIG_FIELDS } from '@/components/payment/providerConfig'
+import { PAYMENT_CURRENCY_OPTIONS, PROVIDER_CONFIG_FIELDS, PROVIDER_SUPPORTED_TYPES } from '@/components/payment/providerConfig'
 
 function findField(providerKey: string, key: string) {
   const fields = PROVIDER_CONFIG_FIELDS[providerKey] || []
@@ -48,5 +48,12 @@ describe('PROVIDER_CONFIG_FIELDS.stripe', () => {
     expect(currency?.defaultValue).toBe('CNY')
     expect(currency?.hintKey).toBe('admin.settings.payment.field_paymentCurrencyHint')
     expect(currency?.options).toBe(PAYMENT_CURRENCY_OPTIONS)
+  })
+})
+
+describe('PROVIDER_CONFIG_FIELDS.offline', () => {
+  it('uses no credentials and only supports offline collection', () => {
+    expect(PROVIDER_CONFIG_FIELDS.offline).toEqual([])
+    expect(PROVIDER_SUPPORTED_TYPES.offline).toEqual(['offline'])
   })
 })

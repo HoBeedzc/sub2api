@@ -103,6 +103,11 @@ export const adminPaymentAPI = {
     return apiClient.post(`/admin/payment/orders/${id}/retry`)
   },
 
+  /** Confirm a manually collected offline payment */
+  confirmOfflinePayment(id: number, data: { amount?: number; reference?: string; note?: string }) {
+    return apiClient.post(`/admin/payment/orders/${id}/confirm-offline`, data)
+  },
+
   /** Process a refund */
   refundOrder(id: number, data: { amount: number; reason: string; deduct_balance?: boolean; force?: boolean }) {
     return apiClient.post(`/admin/payment/orders/${id}/refund`, data)

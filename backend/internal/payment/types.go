@@ -18,6 +18,7 @@ const (
 	TypeLink         PaymentType = "link"
 	TypeEasyPay      PaymentType = "easypay"
 	TypeAirwallex    PaymentType = "airwallex"
+	TypeOffline      PaymentType = "offline"
 )
 
 // Order status constants shared across payment and service layers.
@@ -85,6 +86,8 @@ func GetBasePaymentType(t string) string {
 		return TypeEasyPay
 	case t == TypeAirwallex:
 		return TypeAirwallex
+	case t == TypeOffline:
+		return TypeOffline
 	case t == TypeStripe || t == TypeCard || t == TypeLink:
 		return TypeStripe
 	case len(t) >= len(TypeAlipay) && t[:len(TypeAlipay)] == TypeAlipay:
@@ -114,9 +117,10 @@ type CreatePaymentRequest struct {
 type CreatePaymentResultType = string
 
 const (
-	CreatePaymentResultOrderCreated  CreatePaymentResultType = "order_created"
-	CreatePaymentResultOAuthRequired CreatePaymentResultType = "oauth_required"
-	CreatePaymentResultJSAPIReady    CreatePaymentResultType = "jsapi_ready"
+	CreatePaymentResultOrderCreated   CreatePaymentResultType = "order_created"
+	CreatePaymentResultOAuthRequired  CreatePaymentResultType = "oauth_required"
+	CreatePaymentResultJSAPIReady     CreatePaymentResultType = "jsapi_ready"
+	CreatePaymentResultOfflinePending CreatePaymentResultType = "offline_pending"
 )
 
 // WechatOAuthInfo describes the next step when WeChat OAuth is required before payment.

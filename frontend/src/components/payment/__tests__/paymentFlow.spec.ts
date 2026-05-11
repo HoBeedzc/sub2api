@@ -39,6 +39,7 @@ describe('getVisibleMethods', () => {
       wxpay: methodLimit({ single_max: 100 }),
       stripe: methodLimit({ fee_rate: 3 }),
       airwallex: methodLimit({ single_min: 10 }),
+      offline: methodLimit({ single_max: 500 }),
     })
 
     expect(visible).toEqual({
@@ -46,6 +47,7 @@ describe('getVisibleMethods', () => {
       wxpay: methodLimit({ single_max: 100 }),
       stripe: methodLimit({ fee_rate: 3 }),
       airwallex: methodLimit({ single_min: 10 }),
+      offline: methodLimit({ single_max: 500 }),
     })
   })
 
@@ -219,6 +221,24 @@ describe('decidePaymentLaunch', () => {
     expect(decision.kind).toBe('wechat_jsapi')
     expect(decision.jsapi?.appId).toBe('wx123')
     expect(decision.paymentState.orderType).toBe('subscription')
+  })
+
+  it('keeps offline collection orders in an admin-confirmed pending flow', () => {
+    const decision = decidePaymentLaunch(createOrderResult({
+      result_type: 'offline_pending',
+      payment_type: 'offline',
+      out_trade_no: 'sub2_offline_101',
+    }), {
+      visibleMethod: 'offline',
+      orderType: 'balance',
+      isMobile: false,
+    })
+
+    expect(decision.kind).toBe('offline_pending')
+    expect(decision.paymentState.paymentType).toBe('offline')
+    expect(decision.paymentState.outTradeNo).toBe('sub2_offline_101')
+    expect(decision.paymentState.qrCode).toBe('')
+    expect(decision.paymentState.payUrl).toBe('')
   })
 
   it('forces qr_waiting for mobile alipay when forceQRCode is enabled', () => {

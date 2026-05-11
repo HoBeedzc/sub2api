@@ -634,6 +634,7 @@ const paymentButtonClass = computed(() => {
   if (m.includes('wxpay')) return 'btn-wxpay'
   if (m === 'stripe') return 'btn-stripe'
   if (m === 'airwallex') return 'btn-airwallex'
+  if (m === 'offline') return 'bg-teal-600 text-white hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500'
   return 'btn-primary'
 })
 

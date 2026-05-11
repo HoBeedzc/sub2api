@@ -63,9 +63,9 @@
         </div>
       </template>
 
-      <template #cell-payment_type="{ value }">
+      <template #cell-payment_type="{ value, row }">
         <span class="text-sm text-gray-700 dark:text-gray-300">
-          {{ t('payment.methods.' + value, value) }}
+          {{ t('payment.methods.' + value, row.payment_method_name || value) }}
         </span>
       </template>
 
@@ -213,6 +213,7 @@ const paymentTypeFilterOptions = computed(() => [
   { value: 'wxpay', label: t('payment.methods.wxpay') },
   { value: 'stripe', label: t('payment.methods.stripe') },
   { value: 'airwallex', label: t('payment.methods.airwallex') },
+  { value: 'offline', label: t('payment.methods.offline') },
 ])
 
 const orderTypeFilterOptions = computed(() => [
