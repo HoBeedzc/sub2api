@@ -736,6 +736,7 @@ export default {
         providerWxpay: 'WeChat Pay (Direct)',
         providerStripe: 'Stripe',
         providerAirwallex: 'Airwallex',
+        providerOffline: 'Offline Collection',
         typeDisabled: 'type disabled',
         enableTypesFirst: 'Enable at least one payment type above first',
         easypayRedirect: 'Redirect',

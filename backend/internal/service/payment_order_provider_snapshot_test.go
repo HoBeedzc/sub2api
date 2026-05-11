@@ -186,6 +186,12 @@ func TestBuildPaymentOrderProviderSnapshot_IncludesProviderCurrency(t *testing.T
 	}, CreateOrderRequest{})
 	require.Equal(t, "USD", airwallexSnapshot["currency"])
 	require.Equal(t, "acct-78", airwallexSnapshot["merchant_id"])
+
+	offlineSnapshot := buildPaymentOrderProviderSnapshot(&payment.InstanceSelection{
+		InstanceID:  "79",
+		ProviderKey: payment.TypeOffline,
+	}, CreateOrderRequest{})
+	require.Equal(t, payment.DefaultPaymentCurrency, offlineSnapshot["currency"])
 }
 
 func valueOrEmpty(v *string) string {
