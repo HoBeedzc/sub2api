@@ -491,6 +491,7 @@ type PublicOrderResult struct {
 	BonusAmount         float64    `json:"bonus_amount"`
 	Currency            string     `json:"currency"`
 	PaymentType         string     `json:"payment_type"`
+	PaymentMethodName   string     `json:"payment_method_name"`
 	OrderType           string     `json:"order_type"`
 	Status              string     `json:"status"`
 	CreatedAt           time.Time  `json:"created_at"`
@@ -527,6 +528,7 @@ func buildPublicOrderResult(order *dbent.PaymentOrder) PublicOrderResult {
 		BonusAmount:         order.BonusAmount,
 		Currency:            service.PaymentOrderCurrency(order),
 		PaymentType:         order.PaymentType,
+		PaymentMethodName:   paymentMethodName(order.PaymentType),
 		OrderType:           order.OrderType,
 		Status:              order.Status,
 		CreatedAt:           order.CreatedAt,
@@ -636,6 +638,7 @@ type PaymentOrderResult struct {
 	BonusAmount         float64    `json:"bonus_amount"`
 	Currency            string     `json:"currency"`
 	PaymentType         string     `json:"payment_type"`
+	PaymentMethodName   string     `json:"payment_method_name"`
 	OutTradeNo          string     `json:"out_trade_no"`
 	Status              string     `json:"status"`
 	OrderType           string     `json:"order_type"`
@@ -675,6 +678,7 @@ func sanitizePaymentOrderForResponse(order *dbent.PaymentOrder) *PaymentOrderRes
 		BonusAmount:         order.BonusAmount,
 		Currency:            service.PaymentOrderCurrency(order),
 		PaymentType:         order.PaymentType,
+		PaymentMethodName:   paymentMethodName(order.PaymentType),
 		OutTradeNo:          order.OutTradeNo,
 		Status:              order.Status,
 		OrderType:           order.OrderType,
@@ -694,4 +698,23 @@ func sanitizePaymentOrderForResponse(order *dbent.PaymentOrder) *PaymentOrderRes
 
 func isWeChatBrowser(c *gin.Context) bool {
 	return strings.Contains(strings.ToLower(c.GetHeader("User-Agent")), "micromessenger")
+}
+
+func paymentMethodName(paymentType string) string {
+	switch payment.GetBasePaymentType(paymentType) {
+	case payment.TypeAlipay:
+		return "Alipay"
+	case payment.TypeWxpay:
+		return "WeChat Pay"
+	case payment.TypeStripe:
+		return "Stripe"
+	case payment.TypeAirwallex:
+		return "Airwallex"
+	case payment.TypeEasyPay:
+		return "EasyPay"
+	case payment.TypeOffline:
+		return "Offline"
+	default:
+		return paymentType
+	}
 }

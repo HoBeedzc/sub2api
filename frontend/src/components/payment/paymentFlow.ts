@@ -16,9 +16,10 @@ const VISIBLE_METHOD_ALIASES = {
   wxpay_direct: 'wxpay',
   stripe: 'stripe',
   airwallex: 'airwallex',
+  offline: 'offline',
 } as const
 
-export type VisiblePaymentMethod = 'alipay' | 'wxpay' | 'stripe' | 'airwallex'
+export type VisiblePaymentMethod = 'alipay' | 'wxpay' | 'stripe' | 'airwallex' | 'offline'
 export type StripeVisibleMethod = 'alipay' | 'wechat_pay'
 export type PaymentLaunchKind =
   | 'qr_waiting'
@@ -29,6 +30,7 @@ export type PaymentLaunchKind =
   | 'airwallex_route'
   | 'wechat_oauth'
   | 'wechat_jsapi'
+  | 'offline_pending'
   | 'unhandled'
 
 export interface PaymentRecoverySnapshot {
@@ -170,6 +172,10 @@ export function decidePaymentLaunch(
     resumeToken: result.resume_token || '',
     alipayMobilePrecreateDeepLink: result.alipay_mobile_precreate_deep_link === true,
   }, context.now)
+
+  if (visibleMethod === 'offline' || result.result_type === 'offline_pending') {
+    return { kind: 'offline_pending', paymentState: baseState, recovery: baseState }
+  }
 
   if (visibleMethod === 'airwallex' && baseState.clientSecret && baseState.intentId) {
     if (!context.airwallexRouteUrl) {
