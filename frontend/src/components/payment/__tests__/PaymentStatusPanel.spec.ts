@@ -154,6 +154,29 @@ describe('PaymentStatusPanel', () => {
     expect(wrapper.text()).not.toContain('payment.qr.scanAlipay')
   })
 
+  it('shows offline collection state without rendering a QR code', async () => {
+    const wrapper = mount(PaymentStatusPanel, {
+      props: {
+        orderId: 42,
+        qrCode: '',
+        expiresAt: '2099-01-01T12:30:00Z',
+        paymentType: 'offline',
+        orderType: 'balance',
+      },
+      global: {
+        stubs: {
+          Icon: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('payment.offline.title')
+    expect(wrapper.text()).toContain('payment.offline.waiting')
+    expect(toCanvas).not.toHaveBeenCalled()
+  })
+
   it('actively verifies a stuck pending order and settles it when upstream confirms payment', async () => {
     pollOrderStatus.mockResolvedValue(orderFactory('PENDING'))
     verifyOrder.mockResolvedValue({

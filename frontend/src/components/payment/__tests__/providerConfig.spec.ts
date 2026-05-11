@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   PAYMENT_CURRENCY_OPTIONS,
   PROVIDER_CONFIG_FIELDS,
+  PROVIDER_SUPPORTED_TYPES,
   isBuiltInAlipayMethod,
   isBuiltInWxpayMethod,
   parseEasyPayCustomMethods,
@@ -91,5 +92,12 @@ describe('built-in payment method helpers', () => {
     expect(isBuiltInWxpayMethod('wxpay')).toBe(true)
     expect(isBuiltInWxpayMethod('wxpay_direct')).toBe(true)
     expect(isBuiltInWxpayMethod('card_wxpay')).toBe(false)
+  })
+})
+
+describe('PROVIDER_CONFIG_FIELDS.offline', () => {
+  it('uses no credentials and only supports offline collection', () => {
+    expect(PROVIDER_CONFIG_FIELDS.offline).toEqual([])
+    expect(PROVIDER_SUPPORTED_TYPES.offline).toEqual(['offline'])
   })
 })
