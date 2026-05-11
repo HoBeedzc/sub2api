@@ -25,6 +25,7 @@ Sub2API has a built-in payment system that enables user self-service top-up with
 | **Alipay (Direct)** | Desktop QR code, mobile Alipay redirect | Direct integration with Alipay Open Platform, returning desktop QR codes and mobile WAP/app launch links |
 | **WeChat Pay (Direct)** | Native QR, H5, MP/JSAPI Pay | Direct integration with WeChat Pay APIv3 with environment-aware routing |
 | **Stripe** | Card, Alipay, WeChat Pay, Link, etc. | International payments, multi-currency support |
+| **Offline Collection** | Manual admin confirmation | Users create pending orders first; admins confirm collected funds in the dashboard |
 
 > Alipay/WeChat Pay direct and EasyPay can both exist as backend provider instances, but the frontend always exposes only two visible buttons: `Alipay` and `WeChat Pay`. Admins choose exactly one source for each visible method: direct or EasyPay. Direct channels connect to payment APIs directly with lower fees; EasyPay aggregates through third-party platforms with easier setup.
 
@@ -44,6 +45,7 @@ Sub2API has a built-in payment system that enables user self-service top-up with
 3. Configure basic parameters (amount range, timeout, etc.)
 4. Add at least one provider instance in **Provider Management**
 5. Users can now top up from the frontend
+6. If **Offline Collection** is enabled, admins can manually confirm collected funds from the order list to trigger fulfillment
 
 ---
 
@@ -154,6 +156,14 @@ International payment platform supporting multiple payment methods and currencie
 | **Publishable Key** | Stripe publishable key (`pk_live_...` or `pk_test_...`) | Yes |
 | **Webhook Secret** | Stripe Webhook signing secret (`whsec_...`) | Yes |
 
+### Offline Collection
+
+Offline collection does not require gateway credentials. After a user creates an order, the order remains `PENDING` until an admin receives the offline transfer and clicks **Confirm Offline** on the admin order page:
+
+- The user order record displays the payment method as `Offline Collection`
+- Confirmation marks the order as paid and continues balance crediting or subscription activation
+- Gateway refunds are skipped; any money movement must be handled manually offline
+
 ---
 
 ## Provider Instance Management
@@ -196,7 +206,7 @@ When adding a provider, the system auto-generates callback URLs from your site d
 | **WeChat Pay (Direct)** | `https://your-domain.com/api/v1/payment/webhook/wxpay` |
 | **Stripe** | `https://your-domain.com/api/v1/payment/webhook/stripe` |
 
-> Replace `your-domain.com` with your actual domain. For EasyPay / Alipay / WeChat Pay, the callback URL is auto-filled when adding the provider — no manual configuration needed.
+> Replace `your-domain.com` with your actual domain. For EasyPay / Alipay / WeChat Pay, the callback URL is auto-filled when adding the provider — no manual configuration needed. Offline collection has no webhook.
 
 ### Stripe Webhook Setup
 
@@ -211,7 +221,7 @@ When adding a provider, the system auto-generates callback URLs from your site d
 - Callback URLs must use **HTTPS** (required by Stripe, strongly recommended for others)
 - Ensure your firewall allows callback requests from payment platforms
 - The system automatically verifies callback signatures to prevent forgery
-- Balance top-up is processed automatically upon successful payment — no manual intervention needed
+- Balance top-up is processed automatically upon successful online payment; offline collection requires admin confirmation first
 
 ---
 
@@ -227,14 +237,15 @@ User selects amount and payment method
   └─ Call provider to get payment info
        │
        ▼
-  User completes payment
+  User completes payment / admin confirms offline collection
   ├─ EasyPay     → QR code / H5 redirect
   ├─ Alipay      → Desktop QR payload (Face-to-Face preferred, Website Pay fallback) / mobile Alipay redirect
   ├─ WeChat Pay  → Desktop Native QR / non-WeChat H5 / in-WeChat JSAPI
-  └─ Stripe      → Payment Element (card/Alipay/WeChat/etc.)
+  ├─ Stripe      → Payment Element (card/Alipay/WeChat/etc.)
+  └─ Offline     → Waiting for admin confirmation
        │
        ▼
-  Webhook callback verified → Order PAID
+  Webhook callback verified / admin confirmation → Order PAID
        │
        ▼
   Auto top-up to user balance → Order COMPLETED
@@ -254,6 +265,8 @@ User selects amount and payment method
 | `REFUNDING` | Refund in progress |
 | `REFUNDED` | Refund completed |
 
+> Offline collection orders are also created as `PENDING`. After admin confirmation, the system advances them through `PAID → RECHARGING → COMPLETED`.
+
 ### Timeout and Fallback
 
 - Before marking an order as expired, the background job queries the upstream payment status first
@@ -271,7 +284,7 @@ If you previously used [Sub2ApiPay](https://github.com/touwaeriol/sub2apipay) as
 | Aspect | Sub2ApiPay | Built-in Payment |
 |--------|-----------|-----------------|
 | Deployment | Separate service (Next.js + PostgreSQL) | Built into Sub2API, no extra deployment |
-| Payment Methods | EasyPay, Alipay, WeChat, Stripe | Same |
+| Payment Methods | EasyPay, Alipay, WeChat, Stripe | Same, plus Offline Collection |
 | Configuration | Environment variables + separate admin UI | Unified in Sub2API admin dashboard |
 | Top-up Integration | Via Admin API callback | Internal processing, more reliable |
 | Subscription Plans | Supported | Not yet (planned) |
