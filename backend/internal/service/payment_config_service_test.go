@@ -132,6 +132,8 @@ func TestParsePaymentConfig(t *testing.T) {
 			SettingMaxPendingOrders:              "5",
 			SettingEnabledPaymentTypes:           "alipay,wxpay,stripe",
 			SettingBalancePayDisabled:            "true",
+			SettingRechargeFeeRate:               "2.00",
+			SettingInvoiceFeeRate:                "8.00",
 			SettingLoadBalanceStrategy:           "least_amount",
 			SettingProductNamePrefix:             "PRE",
 			SettingProductNameSuffix:             "SUF",
@@ -165,6 +167,12 @@ func TestParsePaymentConfig(t *testing.T) {
 		}
 		if !cfg.BalanceDisabled {
 			t.Fatal("expected BalanceDisabled=true")
+		}
+		if cfg.RechargeFeeRate != 2 {
+			t.Fatalf("RechargeFeeRate = %v, want 2", cfg.RechargeFeeRate)
+		}
+		if cfg.InvoiceFeeRate != 8 {
+			t.Fatalf("InvoiceFeeRate = %v, want 8", cfg.InvoiceFeeRate)
 		}
 		if cfg.LoadBalanceStrategy != "least_amount" {
 			t.Fatalf("LoadBalanceStrategy = %q, want %q", cfg.LoadBalanceStrategy, "least_amount")
@@ -548,6 +556,22 @@ func TestUpdatePaymentConfig_PersistsExplicitEmptyAndFalseValues(t *testing.T) {
 		if repo.values[key] != value {
 			t.Fatalf("stored %q = %q, want %q", key, repo.values[key], value)
 		}
+	}
+}
+
+func TestUpdatePaymentConfig_PersistsInvoiceFeeRate(t *testing.T) {
+	repo := &paymentConfigSettingRepoStub{values: map[string]string{}}
+	svc := &PaymentConfigService{settingRepo: repo}
+
+	invoiceFeeRate := 8.0
+	if err := svc.UpdatePaymentConfig(context.Background(), UpdatePaymentConfigRequest{
+		InvoiceFeeRate: &invoiceFeeRate,
+	}); err != nil {
+		t.Fatalf("UpdatePaymentConfig returned error: %v", err)
+	}
+
+	if repo.values[SettingInvoiceFeeRate] != "8.00" {
+		t.Fatalf("invoice fee rate = %q, want 8.00", repo.values[SettingInvoiceFeeRate])
 	}
 }
 

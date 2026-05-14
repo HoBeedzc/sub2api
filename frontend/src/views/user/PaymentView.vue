@@ -71,6 +71,17 @@
                   <span class="text-gray-500 dark:text-gray-400">{{ t('payment.paymentAmount') }}</span>
                   <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(validAmount) }}</span>
                 </div>
+                <label v-if="invoiceFeeRate > 0" class="flex cursor-pointer items-center justify-between rounded-xl border border-dashed border-gray-200 px-3 py-2 transition-colors hover:border-primary-300 dark:border-dark-600 dark:hover:border-primary-600">
+                  <span class="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <input
+                      v-model="invoiceRequested"
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
+                    />
+                    {{ t('payment.invoiceRequested') }}
+                  </span>
+                  <span class="font-medium text-primary-600 dark:text-primary-400">+{{ invoiceFeeRate }}%</span>
+                </label>
                 <div v-if="feeRate > 0" class="flex justify-between">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
                   <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(feeAmount) }}</span>
@@ -335,6 +346,7 @@ const amount = ref<number | null>(null)
 const selectedMethod = ref('')
 const selectedPlan = ref<SubscriptionPlan | null>(null)
 const previewImage = ref('')
+const invoiceRequested = ref(false)
 
 const paymentPhase = ref<'select' | 'paying'>('select')
 
@@ -344,6 +356,7 @@ interface CreateOrderOptions {
   paymentType?: string
   isResume?: boolean
   mobileQrFallbackAttempted?: boolean
+  invoiceRequested?: boolean
 }
 
 interface WeixinJSBridgeLike {
@@ -449,7 +462,7 @@ async function redirectToPaymentResult(state: PaymentRecoverySnapshot): Promise<
 
 function buildWechatOAuthAuthorizeUrl(
   authorizeUrl: string,
-  context: { paymentType: string; orderType: OrderType; planId?: number; orderAmount: number },
+  context: { paymentType: string; orderType: OrderType; planId?: number; orderAmount: number; invoiceRequested?: boolean },
 ): string {
   const normalizedUrl = authorizeUrl.trim()
   if (!normalizedUrl || typeof window === 'undefined') {
@@ -475,6 +488,11 @@ function buildWechatOAuthAuthorizeUrl(
       redirectUrl.searchParams.set('amount', String(context.orderAmount))
     } else {
       redirectUrl.searchParams.delete('amount')
+    }
+    if (context.invoiceRequested) {
+      redirectUrl.searchParams.set('invoice_requested', '1')
+    } else {
+      redirectUrl.searchParams.delete('invoice_requested')
     }
 
     targetUrl.searchParams.set('redirect', `${redirectUrl.pathname}${redirectUrl.search}`)
@@ -510,7 +528,7 @@ function onPaymentSettled() {
 // All checkout data from single API call
 const checkout = ref<CheckoutInfoResponse>({
   methods: {}, global_min: 0, global_max: 0,
-  plans: [], balance_disabled: false, balance_recharge_multiplier: 1, subscription_usd_to_cny_rate: 0, recharge_fee_rate: 0, help_text: '', help_image_url: '', stripe_publishable_key: '',
+  plans: [], balance_disabled: false, balance_recharge_multiplier: 1, subscription_usd_to_cny_rate: 0, recharge_fee_rate: 0, invoice_fee_rate: 0, help_text: '', help_image_url: '', stripe_publishable_key: '',
 })
 
 const renderedHelpText = computed(() => DOMPurify.sanitize(
@@ -550,6 +568,7 @@ const subscriptionUsdToCnyRate = computed(() => {
   return Number.isFinite(rate) && rate > 0 ? rate : 0
 })
 const creditedAmount = computed(() => Math.round((validAmount.value * balanceRechargeMultiplier.value) * 100) / 100)
+const subscriptionPrice = computed(() => selectedPlan.value?.price ?? 0)
 
 // Adaptive grid: center single card, 2-col for 2 plans, 3-col for 3+
 const planGridClass = computed(() => {
@@ -643,15 +662,17 @@ const methodOptions = computed<PaymentMethodOption[]>(() =>
   })
 )
 
-const feeRate = computed(() => checkout.value?.recharge_fee_rate ?? 0)
+const baseFeeRate = computed(() => checkout.value?.recharge_fee_rate ?? 0)
+const invoiceFeeRate = computed(() => checkout.value?.invoice_fee_rate ?? 0)
+const feeRate = computed(() => baseFeeRate.value + (activeTab.value === 'recharge' && invoiceRequested.value ? invoiceFeeRate.value : 0))
 const feeAmount = computed(() =>
   feeRate.value > 0 && validAmount.value > 0
-    ? Math.ceil(((validAmount.value * feeRate.value) / 100) * 100) / 100
+    ? ceilPaymentAmount((validAmount.value * feeRate.value) / 100, selectedCurrency.value)
     : 0
 )
 const totalAmount = computed(() =>
   feeRate.value > 0 && validAmount.value > 0
-    ? Math.round((validAmount.value + feeAmount.value) * 100) / 100
+    ? roundPaymentAmount(validAmount.value + feeAmount.value, selectedCurrency.value)
     : validAmount.value
 )
 
@@ -716,7 +737,8 @@ const subMethodOptions = computed<PaymentMethodOption[]>(() => {
 const canSubmitSubscription = computed(() =>
   selectedPlan.value !== null
     && amountFitsMethod(subTotalAmount.value, selectedMethod.value)
-    && selectedLimit.value?.available !== false
+    && subMethodOptions.value.find(option => option.type === selectedMethod.value)?.available !== false
+    && !submitting.value
 )
 
 // Auto-switch to first available method when current selection can't handle the amount
@@ -795,6 +817,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
   errorMessage.value = ''
   errorHintMessage.value = ''
   const requestType = normalizeVisibleMethod(options.paymentType || selectedMethod.value) || options.paymentType || selectedMethod.value
+  const shouldRequestInvoice = options.invoiceRequested ?? (orderType === 'balance' && invoiceRequested.value && invoiceFeeRate.value > 0)
   try {
     const payload = buildCreateOrderPayload({
       amount: orderAmount,
@@ -804,6 +827,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
       origin: typeof window !== 'undefined' ? window.location.origin : '',
       isMobile: isMobileDevice(),
       isWechatBrowser: typeof window !== 'undefined' && /MicroMessenger/i.test(window.navigator.userAgent),
+      invoiceRequested: shouldRequestInvoice,
       forceQRCode: !!(checkout.value.alipay_force_qrcode && normalizeVisibleMethod(requestType) === 'alipay'),
       mobilePrecreateDeepLink: checkout.value.alipay_mobile_precreate_deep_link === true,
     })
@@ -866,6 +890,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
         orderType,
         planId,
         orderAmount,
+        invoiceRequested: shouldRequestInvoice,
       })
       return
     }
@@ -908,6 +933,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
               planId,
               paymentType: visibleMethod,
               attempted: options.mobileQrFallbackAttempted === true,
+              invoiceRequested: shouldRequestInvoice,
             },
           )
           if (!fallbackApplied) {
@@ -926,6 +952,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
           planId,
           paymentType: visibleMethod,
           attempted: options.mobileQrFallbackAttempted === true,
+          invoiceRequested: shouldRequestInvoice,
         })
         if (!fallbackApplied) {
           throw err
@@ -955,6 +982,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
       planId,
       paymentType: requestType,
       attempted: options.mobileQrFallbackAttempted === true,
+      invoiceRequested: shouldRequestInvoice,
     })) {
       return
     } else {
@@ -982,6 +1010,7 @@ interface MobileQrFallbackContext {
   planId?: number
   paymentType: string
   attempted: boolean
+  invoiceRequested?: boolean
 }
 
 function shouldFallbackToDesktopQr(err: unknown, paymentMethod: string, attempted: boolean): boolean {
@@ -1032,6 +1061,7 @@ async function attemptMobileQrFallback(err: unknown, context: MobileQrFallbackCo
       origin: typeof window !== 'undefined' ? window.location.origin : '',
       isMobile: false,
       isWechatBrowser: false,
+      invoiceRequested: context.invoiceRequested,
     })
     const result = await paymentStore.createOrder(payload) as CreateOrderResult & { resume_token?: string }
     const stripeMethod = visibleMethod === 'wxpay' ? 'wechat_pay' : 'alipay'
@@ -1095,6 +1125,7 @@ async function resumeWechatPaymentFromQuery() {
   }
 
   selectedMethod.value = resume.paymentType
+  invoiceRequested.value = resume.invoiceRequested === true
   if (resume.orderType === 'balance' && resume.orderAmount > 0) {
     amount.value = resume.orderAmount
   }
@@ -1109,6 +1140,7 @@ async function resumeWechatPaymentFromQuery() {
       wechatResumeToken: resume.wechatResumeToken,
       paymentType: resume.paymentType,
       isResume: true,
+      invoiceRequested: resume.invoiceRequested,
     })
     return
   }
@@ -1118,6 +1150,7 @@ async function resumeWechatPaymentFromQuery() {
       openid: resume.openid,
       paymentType: resume.paymentType,
       isResume: true,
+      invoiceRequested: resume.invoiceRequested,
     })
   }
 }

@@ -297,6 +297,7 @@ export default {
     paymentMethod: 'Payment Method',
     fee: 'Fee',
     actualPay: 'Actual Payment',
+    invoiceRequested: 'Need invoice',
     createOrder: 'Confirm Payment',
     methods: {
       easypay: 'EasyPay',
