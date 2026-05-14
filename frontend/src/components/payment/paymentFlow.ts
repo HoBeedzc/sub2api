@@ -86,6 +86,7 @@ export interface BuildCreateOrderPayloadInput {
   origin?: string
   isMobile: boolean
   isWechatBrowser: boolean
+  invoiceRequested?: boolean
   /** When true, Alipay payments always use QR code (passes is_mobile: false to backend) */
   forceQRCode?: boolean
   /** When true, keep the real mobile signal so the backend can select precreate */
@@ -140,6 +141,9 @@ export function buildCreateOrderPayload(input: BuildCreateOrderPayloadInput): Cr
 
   if (input.planId) {
     payload.plan_id = input.planId
+  }
+  if (input.invoiceRequested) {
+    payload.invoice_requested = true
   }
   if (normalizedOrigin) {
     payload.return_url = `${normalizedOrigin}/payment/result`

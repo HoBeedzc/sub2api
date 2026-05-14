@@ -53,7 +53,7 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	if s.notificationEmailService != nil {
 		s.notificationEmailService.RememberRecipientLocale(ctx, req.UserID, user.Email, req.Locale)
 	}
-	feeRate := cfg.RechargeFeeRate
+	feeRate := calculateEffectiveRechargeFeeRate(cfg, req.InvoiceRequested)
 	methodCurrency := payment.DefaultPaymentCurrency
 	if s.configService != nil {
 		methodCurrency, err = s.configService.ValidateMethodCurrencyConsistency(ctx, req.PaymentType)
@@ -152,6 +152,17 @@ func (s *PaymentService) validateSubOrder(ctx context.Context, req CreateOrderRe
 		return nil, infraerrors.BadRequest("GROUP_TYPE_MISMATCH", "group is not a subscription type")
 	}
 	return plan, nil
+}
+
+func calculateEffectiveRechargeFeeRate(cfg *PaymentConfig, invoiceRequested bool) float64 {
+	if cfg == nil {
+		return 0
+	}
+	feeRate := cfg.RechargeFeeRate
+	if invoiceRequested {
+		feeRate += cfg.InvoiceFeeRate
+	}
+	return feeRate
 }
 
 func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderRequest, user *User, plan *dbent.SubscriptionPlan, cfg *PaymentConfig, orderAmount, limitAmount, feeRate, payAmount, bonusAmount float64, sel *payment.InstanceSelection) (*dbent.PaymentOrder, error) {
@@ -780,6 +791,9 @@ func buildWeChatPaymentOAuthStartURL(req CreateOrderRequest, scope string) (stri
 	}
 	if req.PlanID > 0 {
 		q.Set("plan_id", strconv.FormatInt(req.PlanID, 10))
+	}
+	if req.InvoiceRequested {
+		q.Set("invoice_requested", "1")
 	}
 	if scope = strings.TrimSpace(scope); scope != "" {
 		q.Set("scope", scope)
