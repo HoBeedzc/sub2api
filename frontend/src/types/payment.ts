@@ -2,6 +2,8 @@
  * Payment System Type Definitions
  */
 
+import type { UserSubscription } from '@/types'
+
 // ==================== Enums / Union Types ====================
 
 export type OrderStatus =
@@ -41,6 +43,8 @@ export interface PaymentConfig {
   balance_disabled: boolean
   balance_recharge_multiplier: number
   subscription_usd_to_cny_rate: number
+  recharge_fee_rate: number
+  invoice_fee_rate: number
   enabled_payment_types: PaymentType[]
   help_image_url: string
   help_text: string
@@ -83,6 +87,7 @@ export interface CheckoutInfoResponse {
   recharge_bonus_mode?: string
   /** 充值页金额区顶部的 Markdown 活动文案；空 = 不展示 */
   recharge_bonus_notice?: string
+  invoice_fee_rate: number
   help_text: string
   help_image_url: string
   stripe_publishable_key: string
@@ -191,6 +196,7 @@ export interface CreateOrderRequest {
   openid?: string
   wechat_resume_token?: string
   is_mobile?: boolean
+  invoice_requested?: boolean
 }
 
 export type CreateOrderResultType = 'order_created' | 'oauth_required' | 'jsapi_ready' | 'offline_pending'
@@ -256,6 +262,14 @@ export interface TopUserPaymentStats {
   user_id: number
   email: string
   amount: number
+}
+
+export interface PurchaseSubscriptionWithBalanceResult {
+  subscription: UserSubscription | null
+  created: boolean
+  balance: number
+  charged_amount: number
+  plan_id: number
 }
 
 export interface DashboardStats {
