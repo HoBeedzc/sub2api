@@ -34,11 +34,12 @@ func TestApplyWeChatPaymentResumeClaims(t *testing.T) {
 	}
 
 	err := applyWeChatPaymentResumeClaims(&req, &service.WeChatPaymentResumeClaims{
-		OpenID:      "openid-123",
-		PaymentType: payment.TypeWxpay,
-		Amount:      "12.50",
-		OrderType:   payment.OrderTypeSubscription,
-		PlanID:      7,
+		OpenID:           "openid-123",
+		PaymentType:      payment.TypeWxpay,
+		Amount:           "12.50",
+		OrderType:        payment.OrderTypeSubscription,
+		PlanID:           7,
+		InvoiceRequested: true,
 	})
 	if err != nil {
 		t.Fatalf("applyWeChatPaymentResumeClaims returned error: %v", err)
@@ -54,6 +55,9 @@ func TestApplyWeChatPaymentResumeClaims(t *testing.T) {
 	}
 	if req.PlanID != 7 {
 		t.Fatalf("plan_id = %d, want 7", req.PlanID)
+	}
+	if !req.InvoiceRequested {
+		t.Fatalf("invoice_requested = false, want true")
 	}
 }
 
