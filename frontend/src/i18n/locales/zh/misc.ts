@@ -319,6 +319,7 @@ export default {
     paymentMethod: '支付方式',
     fee: '手续费',
     actualPay: '实付金额',
+    invoiceRequested: '需要开票',
     createOrder: '确认支付',
     methods: {
       easypay: '易支付',

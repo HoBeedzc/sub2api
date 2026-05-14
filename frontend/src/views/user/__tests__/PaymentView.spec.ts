@@ -13,16 +13,22 @@ const routeState = vi.hoisted(() => ({
   path: '/purchase',
   query: {} as Record<string, unknown>,
 }))
+const authUser = vi.hoisted(() => ({
+  username: 'demo-user',
+  balance: 0,
+}))
 
 const routerReplace = vi.hoisted(() => vi.fn())
 const routerPush = vi.hoisted(() => vi.fn())
 const routerResolve = vi.hoisted(() => vi.fn(() => ({ href: '/payment/stripe?mock=1' })))
 const createOrder = vi.hoisted(() => vi.fn())
+const purchasePlanWithBalance = vi.hoisted(() => vi.fn())
 const refreshUser = vi.hoisted(() => vi.fn())
 const fetchActiveSubscriptions = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const showError = vi.hoisted(() => vi.fn())
 const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
+const showSuccess = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
 const bridgeInvoke = vi.hoisted(() => vi.fn())
 const translate = vi.hoisted(() => vi.fn((key: string) => key))
@@ -52,10 +58,7 @@ vi.mock('vue-i18n', async () => {
 
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
-    user: {
-      username: 'demo-user',
-      balance: 0,
-    },
+    user: authUser,
     refreshUser,
   }),
 }))
@@ -63,6 +66,7 @@ vi.mock('@/stores/auth', () => ({
 vi.mock('@/stores/payment', () => ({
   usePaymentStore: () => ({
     createOrder,
+    purchasePlanWithBalance,
   }),
 }))
 
@@ -78,6 +82,7 @@ vi.mock('@/stores', () => ({
     showError,
     showInfo,
     showWarning,
+    showSuccess,
   }),
 }))
 
@@ -112,6 +117,7 @@ function checkoutInfoFixture(overrides: Partial<CheckoutInfoResponse> = {}) {
     balance_recharge_multiplier: 1,
     subscription_usd_to_cny_rate: 0,
     recharge_fee_rate: 0,
+    invoice_fee_rate: 0,
     help_text: '',
     help_image_url: '',
     stripe_publishable_key: '',
@@ -512,15 +518,18 @@ describe('PaymentView WeChat JSAPI flow', () => {
       wechat_resume: '1',
       wechat_resume_token: 'resume-token-123',
     }
+    authUser.balance = 0
     routerReplace.mockReset().mockResolvedValue(undefined)
     routerPush.mockReset().mockResolvedValue(undefined)
     routerResolve.mockClear()
     createOrder.mockReset()
+    purchasePlanWithBalance.mockReset()
     refreshUser.mockReset()
     fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
     showError.mockReset()
     showInfo.mockReset()
     showWarning.mockReset()
+    showSuccess.mockReset()
     getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture())
     bridgeInvoke.mockReset()
     window.localStorage.clear()
@@ -644,6 +653,37 @@ describe('PaymentView WeChat JSAPI flow', () => {
       wechat_resume_token: 'resume-token-123',
     }))
     expect(window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY)).toBeNull()
+  })
+
+  it('preserves invoice selection from WeChat resume params', async () => {
+    routeState.query = {
+      wechat_resume: '1',
+      openid: 'openid-123',
+      payment_type: 'wxpay',
+      amount: '88',
+      invoice_requested: '1',
+    }
+    createOrder.mockResolvedValue(jsapiOrderFixture('resume-token-invoice'))
+    bridgeInvoke.mockImplementation((_action, _payload, callback) => {
+      callback({ err_msg: 'get_brand_wcpay_request:ok' })
+    })
+
+    shallowMount(PaymentView, {
+      global: {
+        stubs: {
+          Teleport: true,
+          Transition: false,
+        },
+      },
+    })
+    await flushPromises()
+    await flushPromises()
+
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({
+      amount: 88,
+      openid: 'openid-123',
+      invoice_requested: true,
+    }))
   })
 
   it('keeps subscription resume context for token-only WeChat callbacks', async () => {
