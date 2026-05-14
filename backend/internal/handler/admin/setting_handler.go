@@ -357,6 +357,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		PaymentBalanceRechargeMultiplier:                       paymentCfg.BalanceRechargeMultiplier,
 		PaymentSubscriptionUSDToCNYRate:                        paymentCfg.SubscriptionUSDToCNYRate,
 		PaymentRechargeFeeRate:                                 paymentCfg.RechargeFeeRate,
+		PaymentInvoiceFeeRate:                                  paymentCfg.InvoiceFeeRate,
 		PaymentLoadBalanceStrat:                                paymentCfg.LoadBalanceStrategy,
 		PaymentProductNamePrefix:                               paymentCfg.ProductNamePrefix,
 		PaymentProductNameSuffix:                               paymentCfg.ProductNameSuffix,
