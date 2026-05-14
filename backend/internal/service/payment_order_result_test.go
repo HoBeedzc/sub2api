@@ -138,6 +138,18 @@ func TestCalculateCreateOrderPayAmountRejectsFractionalZeroDecimal(t *testing.T)
 	}
 }
 
+func TestCalculateEffectiveRechargeFeeRateAddsInvoiceFeeOnlyWhenRequested(t *testing.T) {
+	t.Parallel()
+
+	cfg := &PaymentConfig{RechargeFeeRate: 2, InvoiceFeeRate: 8}
+	if got := calculateEffectiveRechargeFeeRate(cfg, false); got != 2 {
+		t.Fatalf("fee rate without invoice = %v, want 2", got)
+	}
+	if got := calculateEffectiveRechargeFeeRate(cfg, true); got != 10 {
+		t.Fatalf("fee rate with invoice = %v, want 10", got)
+	}
+}
+
 func TestBuildPaymentSubjectAppliesAffixToSubscriptionPlanProductName(t *testing.T) {
 	t.Parallel()
 

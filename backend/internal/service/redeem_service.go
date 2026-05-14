@@ -511,18 +511,25 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 // invalidateRedeemCaches 失效兑换相关的缓存
 func (s *RedeemService) invalidateRedeemCaches(ctx context.Context, userID int64, redeemCode *RedeemCode) {
 	switch redeemCode.Type {
-	case RedeemTypeBalance:
+	case RedeemTypeBalance, RedeemTypeSubscriptionPurchase:
 		if s.authCacheInvalidator != nil {
 			s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
 		}
-		if s.billingCacheService == nil {
-			return
+		if s.billingCacheService != nil {
+			go func() {
+				cacheCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_ = s.billingCacheService.InvalidateUserBalance(cacheCtx, userID)
+			}()
+			if redeemCode.Type == RedeemTypeSubscriptionPurchase && redeemCode.GroupID != nil {
+				groupID := *redeemCode.GroupID
+				go func() {
+					cacheCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
+					_ = s.billingCacheService.InvalidateSubscription(cacheCtx, userID, groupID)
+				}()
+			}
 		}
-		go func() {
-			cacheCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_ = s.billingCacheService.InvalidateUserBalance(cacheCtx, userID)
-		}()
 	case RedeemTypeConcurrency:
 		if s.authCacheInvalidator != nil {
 			s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)

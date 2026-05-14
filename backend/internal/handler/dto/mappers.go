@@ -545,9 +545,9 @@ func redeemCodeFromServiceBase(rc *service.RedeemCode) RedeemCode {
 		out.Status = service.StatusExpired
 	}
 
-	// For admin_balance/admin_concurrency types, include notes so users can see
-	// why they were charged or credited by admin
-	if (rc.Type == "admin_balance" || rc.Type == "admin_concurrency") && rc.Notes != "" {
+	// For visible balance adjustments and subscription purchases, include notes
+	// so users can see the reason or purchased plan name.
+	if (rc.Type == "admin_balance" || rc.Type == "admin_concurrency" || rc.Type == service.RedeemTypeSubscriptionPurchase) && rc.Notes != "" {
 		out.Notes = &rc.Notes
 	}
 

@@ -7,16 +7,22 @@ const routeState = vi.hoisted(() => ({
   path: '/purchase',
   query: {} as Record<string, unknown>,
 }))
+const authUser = vi.hoisted(() => ({
+  username: 'demo-user',
+  balance: 0,
+}))
 
 const routerReplace = vi.hoisted(() => vi.fn())
 const routerPush = vi.hoisted(() => vi.fn())
 const routerResolve = vi.hoisted(() => vi.fn(() => ({ href: '/payment/stripe?mock=1' })))
 const createOrder = vi.hoisted(() => vi.fn())
+const purchasePlanWithBalance = vi.hoisted(() => vi.fn())
 const refreshUser = vi.hoisted(() => vi.fn())
 const fetchActiveSubscriptions = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const showError = vi.hoisted(() => vi.fn())
 const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
+const showSuccess = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
 const bridgeInvoke = vi.hoisted(() => vi.fn())
 
@@ -45,10 +51,7 @@ vi.mock('vue-i18n', async () => {
 
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
-    user: {
-      username: 'demo-user',
-      balance: 0,
-    },
+    user: authUser,
     refreshUser,
   }),
 }))
@@ -56,6 +59,7 @@ vi.mock('@/stores/auth', () => ({
 vi.mock('@/stores/payment', () => ({
   usePaymentStore: () => ({
     createOrder,
+    purchasePlanWithBalance,
   }),
 }))
 
@@ -71,6 +75,7 @@ vi.mock('@/stores', () => ({
     showError,
     showInfo,
     showWarning,
+    showSuccess,
   }),
 }))
 
@@ -104,6 +109,7 @@ function checkoutInfoFixture() {
       balance_disabled: false,
       balance_recharge_multiplier: 1,
       recharge_fee_rate: 0,
+      invoice_fee_rate: 0,
       help_text: '',
       help_image_url: '',
       stripe_publishable_key: '',
@@ -187,15 +193,18 @@ describe('PaymentView WeChat JSAPI flow', () => {
       wechat_resume: '1',
       wechat_resume_token: 'resume-token-123',
     }
+    authUser.balance = 0
     routerReplace.mockReset().mockResolvedValue(undefined)
     routerPush.mockReset().mockResolvedValue(undefined)
     routerResolve.mockClear()
     createOrder.mockReset()
+    purchasePlanWithBalance.mockReset()
     refreshUser.mockReset()
     fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
     showError.mockReset()
     showInfo.mockReset()
     showWarning.mockReset()
+    showSuccess.mockReset()
     getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture())
     bridgeInvoke.mockReset()
     window.localStorage.clear()
@@ -321,6 +330,37 @@ describe('PaymentView WeChat JSAPI flow', () => {
     expect(window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY)).toBeNull()
   })
 
+  it('preserves invoice selection from WeChat resume params', async () => {
+    routeState.query = {
+      wechat_resume: '1',
+      openid: 'openid-123',
+      payment_type: 'wxpay',
+      amount: '88',
+      invoice_requested: '1',
+    }
+    createOrder.mockResolvedValue(jsapiOrderFixture('resume-token-invoice'))
+    bridgeInvoke.mockImplementation((_action, _payload, callback) => {
+      callback({ err_msg: 'get_brand_wcpay_request:ok' })
+    })
+
+    shallowMount(PaymentView, {
+      global: {
+        stubs: {
+          Teleport: true,
+          Transition: false,
+        },
+      },
+    })
+    await flushPromises()
+    await flushPromises()
+
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({
+      amount: 88,
+      openid: 'openid-123',
+      invoice_requested: true,
+    }))
+  })
+
   it('keeps subscription resume context for token-only WeChat callbacks', async () => {
     routeState.query = {
       wechat_resume: '1',
@@ -414,5 +454,44 @@ describe('PaymentView WeChat JSAPI flow', () => {
     expect(showWarning).toHaveBeenCalledWith('payment.errors.mobilePaymentFallbackToQr')
     expect(showError).not.toHaveBeenCalled()
     expect(window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY)).toContain('weixin://wxpay/bizpayurl?pr=fallback-native')
+  })
+
+  it('purchases a selected subscription plan with account balance', async () => {
+    routeState.query = {
+      tab: 'subscription',
+      group: '3',
+    }
+    authUser.balance = 200
+    getCheckoutInfo.mockResolvedValue(checkoutInfoWithPlansFixture())
+    purchasePlanWithBalance.mockResolvedValue({
+      subscription: null,
+      created: true,
+      balance: 72,
+      charged_amount: 128,
+      plan_id: 7,
+    })
+
+    const wrapper = shallowMount(PaymentView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          Teleport: true,
+          Transition: false,
+        },
+      },
+    })
+    await flushPromises()
+
+    const purchaseButton = wrapper.findAll('button')
+      .find(button => button.text().includes('payment.purchaseWithBalance'))
+    expect(purchaseButton).toBeTruthy()
+    await purchaseButton!.trigger('click')
+    await flushPromises()
+
+    expect(purchasePlanWithBalance).toHaveBeenCalledWith(7, expect.stringMatching(/^sub_purchase:7:/))
+    expect(refreshUser).toHaveBeenCalled()
+    expect(fetchActiveSubscriptions).toHaveBeenCalledWith(true)
+    expect(showSuccess).toHaveBeenCalledWith('payment.subscriptionPurchaseSuccess')
+    expect(createOrder).not.toHaveBeenCalled()
   })
 })

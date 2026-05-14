@@ -379,7 +379,7 @@ const contactInfo = ref('')
 
 // Helper functions for history display
 const isBalanceType = (type: string) => {
-  return type === 'balance' || type === 'admin_balance'
+  return type === 'balance' || type === 'admin_balance' || type === 'sub_purchase'
 }
 
 const isSubscriptionType = (type: string) => {
@@ -395,6 +395,8 @@ const getHistoryItemTitle = (item: RedeemHistoryItem) => {
     return t('redeem.balanceAddedRedeem')
   } else if (item.type === 'admin_balance') {
     return item.value >= 0 ? t('redeem.balanceAddedAdmin') : t('redeem.balanceDeductedAdmin')
+  } else if (item.type === 'sub_purchase') {
+    return t('redeem.subscriptionPurchased')
   } else if (item.type === 'concurrency') {
     return t('redeem.concurrencyAddedRedeem')
   } else if (item.type === 'admin_concurrency') {
@@ -405,10 +407,14 @@ const getHistoryItemTitle = (item: RedeemHistoryItem) => {
   return t('common.unknown')
 }
 
+const formatMoneyDelta = (value: number) => {
+  const amount = `$${Math.abs(value).toFixed(2)}`
+  return value >= 0 ? `+${amount}` : `-${amount}`
+}
+
 const formatHistoryValue = (item: RedeemHistoryItem) => {
   if (isBalanceType(item.type)) {
-    const sign = item.value >= 0 ? '+' : ''
-    return `${sign}$${item.value.toFixed(2)}`
+    return formatMoneyDelta(item.value)
   } else if (isSubscriptionType(item.type)) {
     // 订阅类型显示有效天数和分组名称
     const days = item.validity_days || Math.round(item.value)

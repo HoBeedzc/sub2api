@@ -294,6 +294,9 @@ func (s *SubscriptionService) withSubscriptionUpdateTx(ctx context.Context, fn f
 	if s.entClient == nil {
 		return fn(ctx)
 	}
+	if dbent.TxFromContext(ctx) != nil {
+		return fn(ctx)
+	}
 
 	tx, err := s.entClient.Tx(ctx)
 	if err != nil {

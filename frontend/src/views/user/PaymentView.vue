@@ -63,6 +63,17 @@
                   <span class="text-gray-500 dark:text-gray-400">{{ t('payment.paymentAmount') }}</span>
                   <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(validAmount) }}</span>
                 </div>
+                <label v-if="invoiceFeeRate > 0" class="flex cursor-pointer items-center justify-between rounded-xl border border-dashed border-gray-200 px-3 py-2 transition-colors hover:border-primary-300 dark:border-dark-600 dark:hover:border-primary-600">
+                  <span class="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <input
+                      v-model="invoiceRequested"
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
+                    />
+                    {{ t('payment.invoiceRequested') }}
+                  </span>
+                  <span class="font-medium text-primary-600 dark:text-primary-400">+{{ invoiceFeeRate }}%</span>
+                </label>
                 <div v-if="feeRate > 0" class="flex justify-between">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
                   <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(feeAmount) }}</span>
@@ -104,9 +115,9 @@
                 <!-- Price -->
                 <div class="flex items-baseline gap-2">
                   <span v-if="selectedPlan.original_price" class="text-sm text-gray-400 line-through dark:text-gray-500">
-                    {{ formatSelectedPaymentAmount(selectedPlan.original_price) }}
+                    {{ formatBalanceAmount(selectedPlan.original_price) }}
                   </span>
-                  <span :class="['text-3xl font-bold', planTextClass]">{{ formatSelectedPaymentAmount(selectedPlan.price) }}</span>
+                  <span :class="['text-3xl font-bold', planTextClass]">{{ formatBalanceAmount(selectedPlan.price) }}</span>
                   <span class="text-sm text-gray-500 dark:text-gray-400">/ {{ planValiditySuffix }}</span>
                 </div>
                 <!-- Description -->
@@ -139,35 +150,33 @@
                   </div>
                 </div>
               </div>
-              <div v-if="enabledMethods.length >= 1" class="card p-6">
-                <PaymentMethodSelector
-                  :methods="subMethodOptions"
-                  :selected="selectedMethod"
-                  @select="selectedMethod = $event"
-                />
-              </div>
-              <div v-if="feeRate > 0 && selectedPlan.price > 0" class="card p-6">
+              <div class="card p-6">
                 <div class="space-y-2 text-sm">
                   <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.amountLabel') }}</span>
-                    <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(selectedPlan.price) }}</span>
+                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.balancePurchase') }}</span>
+                    <span class="font-semibold text-gray-900 dark:text-white">{{ formatBalanceAmount(currentUserBalance) }}</span>
                   </div>
                   <div class="flex justify-between">
-                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
-                    <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(subFeeAmount) }}</span>
+                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.planPrice') }}</span>
+                    <span class="text-gray-900 dark:text-white">-{{ formatBalanceAmount(subscriptionPrice) }}</span>
                   </div>
                   <div class="flex justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
-                    <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
-                    <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(subTotalAmount) }}</span>
+                    <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.balanceAfterPurchase') }}</span>
+                    <span :class="['text-lg font-bold', subscriptionBalanceEnough ? 'text-primary-600 dark:text-primary-400' : 'text-red-600 dark:text-red-400']">
+                      {{ formatBalanceAmount(balanceAfterSubscription) }}
+                    </span>
                   </div>
+                  <p v-if="!subscriptionBalanceEnough" class="border-t border-gray-200 pt-2 text-xs text-red-600 dark:border-dark-600 dark:text-red-400">
+                    {{ t('payment.insufficientBalanceForPlan', { balance: formatBalanceAmount(currentUserBalance), price: formatBalanceAmount(subscriptionPrice) }) }}
+                  </p>
                 </div>
               </div>
-              <button :class="['btn w-full py-3 text-base font-medium', paymentButtonClass]" :disabled="!canSubmitSubscription || submitting" @click="confirmSubscribe">
+              <button class="btn btn-primary w-full py-3 text-base font-medium" :disabled="!canSubmitSubscription" @click="confirmSubscribe">
                 <span v-if="submitting" class="flex items-center justify-center gap-2">
                   <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                   {{ t('common.processing') }}
                 </span>
-                <span v-else>{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(feeRate > 0 ? subTotalAmount : selectedPlan.price) }}</span>
+                <span v-else>{{ t('payment.purchaseWithBalance') }} {{ formatBalanceAmount(subscriptionPrice) }}</span>
               </button>
               <button class="btn btn-secondary w-full" @click="selectedPlan = null">{{ t('common.cancel') }}</button>
             </template>
@@ -306,6 +315,7 @@ const amount = ref<number | null>(null)
 const selectedMethod = ref('')
 const selectedPlan = ref<SubscriptionPlan | null>(null)
 const previewImage = ref('')
+const invoiceRequested = ref(false)
 
 const paymentPhase = ref<'select' | 'paying'>('select')
 
@@ -315,6 +325,7 @@ interface CreateOrderOptions {
   paymentType?: string
   isResume?: boolean
   mobileQrFallbackAttempted?: boolean
+  invoiceRequested?: boolean
 }
 
 interface WeixinJSBridgeLike {
@@ -419,7 +430,7 @@ async function redirectToPaymentResult(state: PaymentRecoverySnapshot): Promise<
 
 function buildWechatOAuthAuthorizeUrl(
   authorizeUrl: string,
-  context: { paymentType: string; orderType: OrderType; planId?: number; orderAmount: number },
+  context: { paymentType: string; orderType: OrderType; planId?: number; orderAmount: number; invoiceRequested?: boolean },
 ): string {
   const normalizedUrl = authorizeUrl.trim()
   if (!normalizedUrl || typeof window === 'undefined') {
@@ -445,6 +456,11 @@ function buildWechatOAuthAuthorizeUrl(
       redirectUrl.searchParams.set('amount', String(context.orderAmount))
     } else {
       redirectUrl.searchParams.delete('amount')
+    }
+    if (context.invoiceRequested) {
+      redirectUrl.searchParams.set('invoice_requested', '1')
+    } else {
+      redirectUrl.searchParams.delete('invoice_requested')
     }
 
     targetUrl.searchParams.set('redirect', `${redirectUrl.pathname}${redirectUrl.search}`)
@@ -478,7 +494,7 @@ function onPaymentSettled() {
 // All checkout data from single API call
 const checkout = ref<CheckoutInfoResponse>({
   methods: {}, global_min: 0, global_max: 0,
-  plans: [], balance_disabled: false, balance_recharge_multiplier: 1, recharge_fee_rate: 0, help_text: '', help_image_url: '', stripe_publishable_key: '',
+  plans: [], balance_disabled: false, balance_recharge_multiplier: 1, recharge_fee_rate: 0, invoice_fee_rate: 0, help_text: '', help_image_url: '', stripe_publishable_key: '',
 })
 
 const tabs = computed(() => {
@@ -496,6 +512,14 @@ const balanceRechargeMultiplier = computed(() => {
   return multiplier > 0 ? multiplier : 1
 })
 const creditedAmount = computed(() => Math.round((validAmount.value * balanceRechargeMultiplier.value) * 100) / 100)
+const currentUserBalance = computed(() => user.value?.balance ?? 0)
+const subscriptionPrice = computed(() => selectedPlan.value?.price ?? 0)
+const balanceAfterSubscription = computed(() =>
+  Math.round((currentUserBalance.value - subscriptionPrice.value) * 100) / 100
+)
+const subscriptionBalanceEnough = computed(() =>
+  currentUserBalance.value + 0.0000001 >= subscriptionPrice.value
+)
 
 // Adaptive grid: center single card, 2-col for 2 plans, 3-col for 3+
 const planGridClass = computed(() => {
@@ -544,6 +568,11 @@ function formatSelectedPaymentAmount(value: number): string {
   return formatPaymentAmount(value, selectedCurrency.value, localeCode.value)
 }
 
+function formatBalanceAmount(value: number): string {
+  const safeValue = Number.isFinite(value) ? value : 0
+  return `$${safeValue.toFixed(2)}`
+}
+
 const methodOptions = computed<PaymentMethodOption[]>(() =>
   enabledMethods.value.map((type) => {
     const ml = visibleMethods.value[type]
@@ -555,7 +584,9 @@ const methodOptions = computed<PaymentMethodOption[]>(() =>
   })
 )
 
-const feeRate = computed(() => checkout.value?.recharge_fee_rate ?? 0)
+const baseFeeRate = computed(() => checkout.value?.recharge_fee_rate ?? 0)
+const invoiceFeeRate = computed(() => checkout.value?.invoice_fee_rate ?? 0)
+const feeRate = computed(() => baseFeeRate.value + (invoiceRequested.value ? invoiceFeeRate.value : 0))
 const feeAmount = computed(() =>
   feeRate.value > 0 && validAmount.value > 0
     ? Math.ceil(((validAmount.value * feeRate.value) / 100) * 100) / 100
@@ -588,35 +619,11 @@ const canSubmit = computed(() =>
     && selectedLimit.value?.available !== false
 )
 
-// Subscription-specific: method options based on plan price
-const subMethodOptions = computed<PaymentMethodOption[]>(() => {
-  const planPrice = selectedPlan.value?.price ?? 0
-  return enabledMethods.value.map((type) => {
-    const ml = visibleMethods.value[type]
-    return {
-      type,
-      fee_rate: ml?.fee_rate ?? 0,
-      available: ml?.available !== false && amountFitsMethod(planPrice, type),
-    }
-  })
-})
-
-const subFeeAmount = computed(() => {
-  const price = selectedPlan.value?.price ?? 0
-  if (feeRate.value <= 0 || price <= 0) return 0
-  return Math.ceil(((price * feeRate.value) / 100) * 100) / 100
-})
-
-const subTotalAmount = computed(() => {
-  const price = selectedPlan.value?.price ?? 0
-  if (feeRate.value <= 0 || price <= 0) return price
-  return Math.round((price + subFeeAmount.value) * 100) / 100
-})
-
 const canSubmitSubscription = computed(() =>
   selectedPlan.value !== null
-    && amountFitsMethod(selectedPlan.value.price, selectedMethod.value)
-    && selectedLimit.value?.available !== false
+    && subscriptionPrice.value > 0
+    && subscriptionBalanceEnough.value
+    && !submitting.value
 )
 
 // Auto-switch to first available method when current selection can't handle the amount
@@ -680,9 +687,49 @@ async function handleSubmitRecharge() {
   await createOrder(validAmount.value, 'balance')
 }
 
+function buildSubscriptionPurchaseIdempotencyKey(planId: number): string {
+  const randomPart = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return `sub_purchase:${planId}:${randomPart}`
+}
+
 async function confirmSubscribe() {
   if (!selectedPlan.value || submitting.value) return
-  await createOrder(selectedPlan.value.price, 'subscription', selectedPlan.value.id)
+  if (!subscriptionBalanceEnough.value) {
+    appStore.showError(t('payment.errors.INSUFFICIENT_BALANCE'))
+    return
+  }
+
+  submitting.value = true
+  errorMessage.value = ''
+  errorHintMessage.value = ''
+  try {
+    await paymentStore.purchasePlanWithBalance(
+      selectedPlan.value.id,
+      buildSubscriptionPurchaseIdempotencyKey(selectedPlan.value.id)
+    )
+    await Promise.resolve(authStore.refreshUser()).catch((err: unknown) => {
+      console.error('[payment] Failed to refresh user after subscription purchase:', err)
+    })
+    await Promise.resolve(subscriptionStore.fetchActiveSubscriptions(true)).catch((err: unknown) => {
+      console.error('[payment] Failed to refresh subscriptions after balance purchase:', err)
+    })
+    selectedPlan.value = null
+    appStore.showSuccess(t('payment.subscriptionPurchaseSuccess'))
+  } catch (err: unknown) {
+    const message = extractI18nErrorMessage(
+      err,
+      t,
+      'payment.errors',
+      extractApiErrorMessage(err, t('payment.result.failed'))
+    )
+    errorMessage.value = message
+    errorHintMessage.value = ''
+    appStore.showError(message)
+  } finally {
+    submitting.value = false
+  }
 }
 
 async function createOrder(orderAmount: number, orderType: OrderType, planId?: number, options: CreateOrderOptions = {}) {
@@ -690,6 +737,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
   errorMessage.value = ''
   errorHintMessage.value = ''
   const requestType = normalizeVisibleMethod(options.paymentType || selectedMethod.value) || options.paymentType || selectedMethod.value
+  const shouldRequestInvoice = options.invoiceRequested ?? (invoiceRequested.value && invoiceFeeRate.value > 0)
   try {
     const payload = buildCreateOrderPayload({
       amount: orderAmount,
@@ -699,6 +747,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
       origin: typeof window !== 'undefined' ? window.location.origin : '',
       isMobile: isMobileDevice(),
       isWechatBrowser: typeof window !== 'undefined' && /MicroMessenger/i.test(window.navigator.userAgent),
+      invoiceRequested: shouldRequestInvoice,
       forceQRCode: !!(checkout.value.alipay_force_qrcode && normalizeVisibleMethod(requestType) === 'alipay'),
     })
     if (options.openid) {
@@ -759,6 +808,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
         orderType,
         planId,
         orderAmount,
+        invoiceRequested: shouldRequestInvoice,
       })
       return
     }
@@ -801,6 +851,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
               planId,
               paymentType: visibleMethod,
               attempted: options.mobileQrFallbackAttempted === true,
+              invoiceRequested: shouldRequestInvoice,
             },
           )
           if (!fallbackApplied) {
@@ -819,6 +870,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
           planId,
           paymentType: visibleMethod,
           attempted: options.mobileQrFallbackAttempted === true,
+          invoiceRequested: shouldRequestInvoice,
         })
         if (!fallbackApplied) {
           throw err
@@ -848,6 +900,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
       planId,
       paymentType: requestType,
       attempted: options.mobileQrFallbackAttempted === true,
+      invoiceRequested: shouldRequestInvoice,
     })) {
       return
     } else {
@@ -875,6 +928,7 @@ interface MobileQrFallbackContext {
   planId?: number
   paymentType: string
   attempted: boolean
+  invoiceRequested?: boolean
 }
 
 function shouldFallbackToDesktopQr(err: unknown, paymentMethod: string, attempted: boolean): boolean {
@@ -925,6 +979,7 @@ async function attemptMobileQrFallback(err: unknown, context: MobileQrFallbackCo
       origin: typeof window !== 'undefined' ? window.location.origin : '',
       isMobile: false,
       isWechatBrowser: false,
+      invoiceRequested: context.invoiceRequested,
     })
     const result = await paymentStore.createOrder(payload) as CreateOrderResult & { resume_token?: string }
     const stripeMethod = visibleMethod === 'wxpay' ? 'wechat_pay' : 'alipay'
@@ -988,6 +1043,7 @@ async function resumeWechatPaymentFromQuery() {
   }
 
   selectedMethod.value = resume.paymentType
+  invoiceRequested.value = resume.invoiceRequested === true
   if (resume.orderType === 'balance' && resume.orderAmount > 0) {
     amount.value = resume.orderAmount
   }
@@ -1002,6 +1058,7 @@ async function resumeWechatPaymentFromQuery() {
       wechatResumeToken: resume.wechatResumeToken,
       paymentType: resume.paymentType,
       isResume: true,
+      invoiceRequested: resume.invoiceRequested,
     })
     return
   }
@@ -1011,6 +1068,7 @@ async function resumeWechatPaymentFromQuery() {
       openid: resume.openid,
       paymentType: resume.paymentType,
       isResume: true,
+      invoiceRequested: resume.invoiceRequested,
     })
   }
 }

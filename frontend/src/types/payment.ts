@@ -2,6 +2,8 @@
  * Payment System Type Definitions
  */
 
+import type { UserSubscription } from '@/types'
+
 // ==================== Enums / Union Types ====================
 
 export type OrderStatus =
@@ -33,6 +35,8 @@ export interface PaymentConfig {
   order_timeout_minutes: number
   balance_disabled: boolean
   balance_recharge_multiplier: number
+  recharge_fee_rate: number
+  invoice_fee_rate: number
   enabled_payment_types: PaymentType[]
   help_image_url: string
   help_text: string
@@ -66,6 +70,7 @@ export interface CheckoutInfoResponse {
   balance_disabled: boolean
   balance_recharge_multiplier: number
   recharge_fee_rate: number
+  invoice_fee_rate: number
   help_text: string
   help_image_url: string
   stripe_publishable_key: string
@@ -164,6 +169,7 @@ export interface CreateOrderRequest {
   openid?: string
   wechat_resume_token?: string
   is_mobile?: boolean
+  invoice_requested?: boolean
 }
 
 export type CreateOrderResultType = 'order_created' | 'oauth_required' | 'jsapi_ready' | 'offline_pending'
@@ -207,6 +213,14 @@ export interface CreateOrderResult {
   oauth?: WechatOAuthInfo
   jsapi?: WechatJSAPIPayload
   jsapi_payload?: WechatJSAPIPayload
+}
+
+export interface PurchaseSubscriptionWithBalanceResult {
+  subscription: UserSubscription | null
+  created: boolean
+  balance: number
+  charged_amount: number
+  plan_id: number
 }
 
 export interface DashboardStats {

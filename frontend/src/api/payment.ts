@@ -12,7 +12,8 @@ import type {
   CheckoutInfoResponse,
   CreateOrderRequest,
   CreateOrderResult,
-  PaymentOrder
+  PaymentOrder,
+  PurchaseSubscriptionWithBalanceResult
 } from '@/types/payment'
 import type { BasePaginationResponse } from '@/types'
 
@@ -45,6 +46,18 @@ export const paymentAPI = {
   /** Create a new payment order */
   createOrder(data: CreateOrderRequest) {
     return apiClient.post<CreateOrderResult>('/payment/orders', data)
+  },
+
+  /** Purchase a subscription plan using account balance */
+  purchasePlanWithBalance(planId: number, idempotencyKey?: string) {
+    const config = idempotencyKey
+      ? { headers: { 'Idempotency-Key': idempotencyKey } }
+      : undefined
+    return apiClient.post<PurchaseSubscriptionWithBalanceResult>(
+      `/payment/plans/${planId}/purchase`,
+      {},
+      config
+    )
   },
 
   /** Get current user's orders */
