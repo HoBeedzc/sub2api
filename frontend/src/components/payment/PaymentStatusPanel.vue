@@ -168,6 +168,7 @@
           </div>
         </div>
       </template>
+    </template>
 
     <!-- Offline payment: waits for admin confirmation -->
     <template v-else-if="isOfflinePayment">

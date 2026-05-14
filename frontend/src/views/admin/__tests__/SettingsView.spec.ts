@@ -491,6 +491,7 @@ const baseSettingsResponse = {
   payment_recharge_bonus_tiers: [],
   payment_recharge_bonus_mode: "bonus",
   payment_recharge_bonus_notice: "",
+  payment_invoice_fee_rate: 0,
   payment_load_balance_strategy: "round-robin",
   payment_product_name_prefix: "",
   payment_product_name_suffix: "",

@@ -29,6 +29,7 @@ const (
 	// 0/未配置 = 关闭换算（订阅按 price 数值直付），显式配置后 CNY 通道订阅按 price × rate 收款。
 	SettingSubscriptionUSDToCNYRate      = "SUBSCRIPTION_USD_TO_CNY_RATE"
 	SettingRechargeFeeRate               = "RECHARGE_FEE_RATE"
+	SettingInvoiceFeeRate                = "INVOICE_FEE_RATE"
 	SettingProductNamePrefix             = "PRODUCT_NAME_PREFIX"
 	SettingProductNameSuffix             = "PRODUCT_NAME_SUFFIX"
 	SettingHelpImageURL                  = "PAYMENT_HELP_IMAGE_URL"
@@ -67,13 +68,14 @@ type PaymentConfig struct {
 	// RechargeBonusMode 阶梯模式：bonus（赠金）/ discount（折扣），已归一化。
 	RechargeBonusMode string `json:"recharge_bonus_mode"`
 	// RechargeBonusNotice 充值页展示的 Markdown 活动文案；空表示不展示。
-	RechargeBonusNotice  string `json:"recharge_bonus_notice"`
-	LoadBalanceStrategy  string `json:"load_balance_strategy"`
-	ProductNamePrefix    string `json:"product_name_prefix"`
-	ProductNameSuffix    string `json:"product_name_suffix"`
-	HelpImageURL         string `json:"help_image_url"`
-	HelpText             string `json:"help_text"`
-	StripePublishableKey string `json:"stripe_publishable_key,omitempty"`
+	InvoiceFeeRate       float64 `json:"invoice_fee_rate"`
+	RechargeBonusNotice  string  `json:"recharge_bonus_notice"`
+	LoadBalanceStrategy  string  `json:"load_balance_strategy"`
+	ProductNamePrefix    string  `json:"product_name_prefix"`
+	ProductNameSuffix    string  `json:"product_name_suffix"`
+	HelpImageURL         string  `json:"help_image_url"`
+	HelpText             string  `json:"help_text"`
+	StripePublishableKey string  `json:"stripe_publishable_key,omitempty"`
 
 	// Cancel rate limit settings
 	CancelRateLimitEnabled bool   `json:"cancel_rate_limit_enabled"`
@@ -104,6 +106,7 @@ type UpdatePaymentConfigRequest struct {
 	// RechargeBonusTiers nil 表示不更新；空切片表示清空阶梯。
 	RechargeBonusTiers  *[]RechargeBonusTier `json:"recharge_bonus_tiers"`
 	RechargeBonusMode   *string              `json:"recharge_bonus_mode"`
+	InvoiceFeeRate      *float64             `json:"invoice_fee_rate"`
 	RechargeBonusNotice *string              `json:"recharge_bonus_notice"`
 	LoadBalanceStrategy *string              `json:"load_balance_strategy"`
 	ProductNamePrefix   *string              `json:"product_name_prefix"`
@@ -229,7 +232,7 @@ func (s *PaymentConfigService) GetPaymentConfig(ctx context.Context) (*PaymentCo
 	keys := []string{
 		SettingPaymentEnabled, SettingMinRechargeAmount, SettingMaxRechargeAmount,
 		SettingDailyRechargeLimit, SettingOrderTimeoutMinutes, SettingMaxPendingOrders,
-		SettingEnabledPaymentTypes, SettingBalancePayDisabled, SettingBalanceRechargeMult, SettingSubscriptionUSDToCNYRate, SettingRechargeFeeRate, SettingLoadBalanceStrategy,
+		SettingEnabledPaymentTypes, SettingBalancePayDisabled, SettingBalanceRechargeMult, SettingSubscriptionUSDToCNYRate, SettingRechargeFeeRate, SettingInvoiceFeeRate, SettingLoadBalanceStrategy,
 		SettingRechargeBonusTiers, SettingRechargeBonusMode, SettingRechargeBonusNotice,
 		SettingProductNamePrefix, SettingProductNameSuffix,
 		SettingHelpImageURL, SettingHelpText,
@@ -263,6 +266,7 @@ func (s *PaymentConfigService) parsePaymentConfig(vals map[string]string) *Payme
 		RechargeFeeRate:           pcParseFloat(vals[SettingRechargeFeeRate], 0),
 		RechargeBonusTiers:        parseRechargeBonusTiers(vals[SettingRechargeBonusTiers]),
 		RechargeBonusNotice:       vals[SettingRechargeBonusNotice],
+		InvoiceFeeRate:            pcParseFloat(vals[SettingInvoiceFeeRate], 0),
 		LoadBalanceStrategy:       vals[SettingLoadBalanceStrategy],
 		ProductNamePrefix:         vals[SettingProductNamePrefix],
 		ProductNameSuffix:         vals[SettingProductNameSuffix],
@@ -366,6 +370,15 @@ func (s *PaymentConfigService) UpdatePaymentConfig(ctx context.Context, req Upda
 			return infraerrors.BadRequest("INVALID_RECHARGE_BONUS_NOTICE", err.Error())
 		}
 	}
+	if req.InvoiceFeeRate != nil {
+		v := *req.InvoiceFeeRate
+		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > 100 {
+			return infraerrors.BadRequest("INVALID_INVOICE_FEE_RATE", "invoice fee rate must be between 0 and 100")
+		}
+		if math.Round(v*100) != v*100 {
+			return infraerrors.BadRequest("INVALID_INVOICE_FEE_RATE", "invoice fee rate allows at most 2 decimal places")
+		}
+	}
 	m := make(map[string]string)
 	if req.Enabled != nil {
 		m[SettingPaymentEnabled] = formatBoolOrEmpty(req.Enabled)
@@ -408,6 +421,9 @@ func (s *PaymentConfigService) UpdatePaymentConfig(ctx context.Context, req Upda
 	}
 	if req.RechargeBonusNotice != nil {
 		m[SettingRechargeBonusNotice] = strings.TrimSpace(*req.RechargeBonusNotice)
+	}
+	if req.InvoiceFeeRate != nil {
+		m[SettingInvoiceFeeRate] = formatNonNegativeFloat(req.InvoiceFeeRate)
 	}
 	if req.LoadBalanceStrategy != nil {
 		m[SettingLoadBalanceStrategy] = derefStr(req.LoadBalanceStrategy)
