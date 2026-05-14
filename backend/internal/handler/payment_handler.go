@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
@@ -138,6 +140,7 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 		BalanceDisabled:           cfg.BalanceDisabled,
 		BalanceRechargeMultiplier: cfg.BalanceRechargeMultiplier,
 		RechargeFeeRate:           cfg.RechargeFeeRate,
+		InvoiceFeeRate:            cfg.InvoiceFeeRate,
 		HelpText:                  cfg.HelpText,
 		HelpImageURL:              cfg.HelpImageURL,
 		StripePublishableKey:      cfg.StripePublishableKey,
@@ -152,6 +155,7 @@ type checkoutInfoResponse struct {
 	BalanceDisabled           bool                            `json:"balance_disabled"`
 	BalanceRechargeMultiplier float64                         `json:"balance_recharge_multiplier"`
 	RechargeFeeRate           float64                         `json:"recharge_fee_rate"`
+	InvoiceFeeRate            float64                         `json:"invoice_fee_rate"`
 	HelpText                  string                          `json:"help_text"`
 	HelpImageURL              string                          `json:"help_image_url"`
 	StripePublishableKey      string                          `json:"stripe_publishable_key"`
@@ -194,6 +198,49 @@ func parseFeatures(raw string) []string {
 	return out
 }
 
+type purchaseSubscriptionWithBalanceResponse struct {
+	Subscription  *dto.UserSubscription `json:"subscription"`
+	Created       bool                  `json:"created"`
+	Balance       float64               `json:"balance"`
+	ChargedAmount float64               `json:"charged_amount"`
+	PlanID        int64                 `json:"plan_id"`
+}
+
+func purchaseSubscriptionWithBalanceResponseFromService(r *service.PurchaseSubscriptionWithBalanceResult) *purchaseSubscriptionWithBalanceResponse {
+	if r == nil {
+		return nil
+	}
+	return &purchaseSubscriptionWithBalanceResponse{
+		Subscription:  dto.UserSubscriptionFromService(r.Subscription),
+		Created:       r.Created,
+		Balance:       r.Balance,
+		ChargedAmount: r.ChargedAmount,
+		PlanID:        r.PlanID,
+	}
+}
+
+// PurchasePlanWithBalance buys a subscription plan with account balance.
+// POST /api/v1/payment/plans/:id/purchase
+func (h *PaymentHandler) PurchasePlanWithBalance(c *gin.Context) {
+	subject, ok := requireAuth(c)
+	if !ok {
+		return
+	}
+	planID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || planID <= 0 {
+		response.BadRequest(c, "Invalid plan ID")
+		return
+	}
+	payload := gin.H{"plan_id": planID}
+	executeUserIdempotentJSON(c, "user.subscription.purchase", payload, service.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
+		result, err := h.paymentService.PurchaseSubscriptionWithBalance(ctx, subject.UserID, planID)
+		if err != nil {
+			return nil, err
+		}
+		return purchaseSubscriptionWithBalanceResponseFromService(result), nil
+	})
+}
+
 // GetLimits returns per-payment-type limits derived from enabled provider instances.
 // GET /api/v1/payment/limits
 func (h *PaymentHandler) GetLimits(c *gin.Context) {
@@ -215,6 +262,7 @@ type CreateOrderRequest struct {
 	PaymentSource     string  `json:"payment_source"`
 	OrderType         string  `json:"order_type"`
 	PlanID            int64   `json:"plan_id"`
+	InvoiceRequested  bool    `json:"invoice_requested,omitempty"`
 	// IsMobile lets the frontend declare its mobile status directly. When
 	// nil we fall back to User-Agent heuristics (which miss iPadOS / some
 	// embedded browsers that strip the "Mobile" keyword).
@@ -251,19 +299,20 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		mobile = *req.IsMobile
 	}
 	result, err := h.paymentService.CreateOrder(c.Request.Context(), service.CreateOrderRequest{
-		UserID:          subject.UserID,
-		Amount:          req.Amount,
-		PaymentType:     req.PaymentType,
-		OpenID:          req.OpenID,
-		ClientIP:        c.ClientIP(),
-		IsMobile:        mobile,
-		IsWeChatBrowser: isWeChatBrowser(c),
-		SrcHost:         c.Request.Host,
-		SrcURL:          c.Request.Referer(),
-		ReturnURL:       req.ReturnURL,
-		PaymentSource:   req.PaymentSource,
-		OrderType:       req.OrderType,
-		PlanID:          req.PlanID,
+		UserID:           subject.UserID,
+		Amount:           req.Amount,
+		PaymentType:      req.PaymentType,
+		OpenID:           req.OpenID,
+		ClientIP:         c.ClientIP(),
+		IsMobile:         mobile,
+		IsWeChatBrowser:  isWeChatBrowser(c),
+		SrcHost:          c.Request.Host,
+		SrcURL:           c.Request.Referer(),
+		ReturnURL:        req.ReturnURL,
+		PaymentSource:    req.PaymentSource,
+		OrderType:        req.OrderType,
+		PlanID:           req.PlanID,
+		InvoiceRequested: req.InvoiceRequested,
 	})
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -307,6 +356,7 @@ func applyWeChatPaymentResumeClaims(req *CreateOrderRequest, claims *service.WeC
 	if claims.PlanID > 0 {
 		req.PlanID = claims.PlanID
 	}
+	req.InvoiceRequested = claims.InvoiceRequested
 	return nil
 }
 

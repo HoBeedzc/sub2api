@@ -280,6 +280,24 @@ describe('buildCreateOrderPayload', () => {
       payment_source: 'wechat_in_app_resume',
     })
   })
+
+  it('includes invoice request only when selected', () => {
+    expect(buildCreateOrderPayload({
+      amount: 100,
+      paymentType: 'alipay',
+      orderType: 'balance',
+      isMobile: false,
+      isWechatBrowser: false,
+      invoiceRequested: true,
+    })).toEqual({
+      amount: 100,
+      payment_type: 'alipay',
+      order_type: 'balance',
+      is_mobile: false,
+      payment_source: 'hosted_redirect',
+      invoice_requested: true,
+    })
+  })
 })
 
 describe('readPaymentRecoverySnapshot', () => {

@@ -138,6 +138,18 @@ func TestCalculateCreateOrderPayAmountRejectsFractionalZeroDecimal(t *testing.T)
 	}
 }
 
+func TestCalculateEffectiveRechargeFeeRateAddsInvoiceFeeOnlyWhenRequested(t *testing.T) {
+	t.Parallel()
+
+	cfg := &PaymentConfig{RechargeFeeRate: 2, InvoiceFeeRate: 8}
+	if got := calculateEffectiveRechargeFeeRate(cfg, false); got != 2 {
+		t.Fatalf("fee rate without invoice = %v, want 2", got)
+	}
+	if got := calculateEffectiveRechargeFeeRate(cfg, true); got != 10 {
+		t.Fatalf("fee rate with invoice = %v, want 10", got)
+	}
+}
+
 func TestMaybeBuildWeChatOAuthRequiredResponse(t *testing.T) {
 	t.Setenv("PAYMENT_RESUME_SIGNING_KEY", "0123456789abcdef0123456789abcdef")
 

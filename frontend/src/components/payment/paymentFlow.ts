@@ -80,6 +80,7 @@ export interface BuildCreateOrderPayloadInput {
   origin?: string
   isMobile: boolean
   isWechatBrowser: boolean
+  invoiceRequested?: boolean
 }
 
 type CreateOrderFlowResult = CreateOrderResult & {
@@ -125,6 +126,9 @@ export function buildCreateOrderPayload(input: BuildCreateOrderPayloadInput): Cr
 
   if (input.planId) {
     payload.plan_id = input.planId
+  }
+  if (input.invoiceRequested) {
+    payload.invoice_requested = true
   }
   if (normalizedOrigin) {
     payload.return_url = `${normalizedOrigin}/payment/result`
