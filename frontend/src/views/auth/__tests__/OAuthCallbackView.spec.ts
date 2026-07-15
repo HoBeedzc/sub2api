@@ -188,6 +188,24 @@ describe('OAuthCallbackView', () => {
     expect(setTokenMock).toHaveBeenCalledWith('token-1')
   })
 
+  it('prefills the invitation input from a stored user invitation code', async () => {
+    routeState.path = '/auth/oauth/callback'
+    exchangePendingOAuthCompletionMock.mockResolvedValue({
+      error: 'invitation_required',
+      provider: 'google',
+      redirect: '/dashboard',
+      resolved_email: 'pending@example.com',
+      invitation_required: true,
+    })
+    window.sessionStorage.setItem('oauth_aff_code', 'FRIEND789')
+
+    const wrapper = mount(OAuthCallbackView)
+    await vi.dynamicImportSettled()
+
+    const invitationInput = wrapper.find('input[type="text"]')
+    expect((invitationInput.element as HTMLInputElement).value).toBe('FRIEND789')
+  })
+
   it('completes email oauth registration with readonly email and without posting email', async () => {
     routeState.path = '/auth/oauth/callback'
     exchangePendingOAuthCompletionMock.mockResolvedValue({

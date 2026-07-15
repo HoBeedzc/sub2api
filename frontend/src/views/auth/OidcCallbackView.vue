@@ -654,6 +654,9 @@ async function finalizePendingAccountResponse(completion: PendingOidcCompletion)
 
 async function handleSubmitInvitation() {
   invitationError.value = ''
+  if (!invitationCode.value.trim()) {
+    invitationCode.value = loadOAuthAffiliateCode()
+  }
   if (!invitationCode.value.trim()) return
 
   isSubmitting.value = true
@@ -772,6 +775,7 @@ async function handleSubmitTotpChallenge() {
 }
 
 onMounted(async () => {
+  invitationCode.value = invitationCode.value || loadOAuthAffiliateCode()
   void loadProviderName()
 
   const params = parseFragmentParams()
