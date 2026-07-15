@@ -80,3 +80,9 @@ describe('AppSidebar subscription feature flag', () => {
     expect(componentSource).toMatch(/path: '\/purchase'[^\n]*label: purchaseNavLabel\.value/)
   })
 })
+
+describe('AppSidebar invitation navigation', () => {
+  it('shows the invitation center when invite-only signup is enabled without rebates', () => {
+    expect(componentSource).toContain("appStore.cachedPublicSettings?.invitation_code_enabled === true")
+  })
+})
