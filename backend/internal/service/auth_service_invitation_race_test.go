@@ -79,6 +79,18 @@ func (s *raceSafeUserRepo) Update(context.Context, *User, UserUpdateFields) erro
 	return nil
 }
 
+func (s *raceSafeUserRepo) Delete(_ context.Context, id int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	user, ok := s.byID[id]
+	if !ok {
+		return nil
+	}
+	delete(s.byEmail, user.Email)
+	delete(s.byID, id)
+	return nil
+}
+
 // raceSafeRedeemRepo 是并发安全的兑换码仓储桩：Use 以互斥锁 + 状态条件
 // 模拟数据库的条件更新（WHERE status='unused'），语义与线上实现一致。
 type raceSafeRedeemRepo struct {

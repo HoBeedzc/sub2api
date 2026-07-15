@@ -184,6 +184,12 @@ const redirectTo = ref('/dashboard')
 const invalidCallback = ref(false)
 const EMAIL_OAUTH_PENDING_PROVIDER_KEY = 'email_oauth_pending_provider'
 
+function prefillInvitationFromAffiliate(): void {
+  if (!invitationCode.value.trim()) {
+    invitationCode.value = loadOAuthAffiliateCode()
+  }
+}
+
 type EmailOAuthPendingCompletion = Partial<OAuthTokenResponse> & {
   error?: string
   provider?: string
@@ -304,6 +310,9 @@ async function resumePendingEmailOAuth() {
 
     if (completion.error === 'invitation_required' || completion.error === 'registration_completion_required') {
       invitationRequired.value = completion.error === 'invitation_required' || completion.invitation_required === true
+      if (invitationRequired.value) {
+        prefillInvitationFromAffiliate()
+      }
       registrationEmail.value = String(completion.resolved_email || completion.email || '').trim()
       needsRegistrationCompletion.value = true
       isProcessing.value = false
