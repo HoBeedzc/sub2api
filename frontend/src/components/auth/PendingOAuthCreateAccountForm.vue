@@ -102,6 +102,7 @@ import { useI18n } from 'vue-i18n'
 import TurnstileWidget from '@/components/CaptchaChallenge.vue'
 import { getPublicSettings, sendPendingOAuthVerifyCode } from '@/api/auth'
 import { useAppStore } from '@/stores'
+import { loadOAuthAffiliateCode } from '@/utils/oauthAffiliate'
 
 export type PendingOAuthCreateAccountPayload = {
   email: string
@@ -344,6 +345,7 @@ function emitSwitchToBind() {
 }
 
 onMounted(async () => {
+  invitationCode.value = invitationCode.value || loadOAuthAffiliateCode()
   try {
     const settings = await getPublicSettings()
     invitationCodeEnabled.value = settings.invitation_code_enabled === true

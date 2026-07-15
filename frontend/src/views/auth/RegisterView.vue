@@ -508,6 +508,9 @@ function syncAffiliateReferralCode(): string {
   const code = resolveAffiliateReferralCode(route.query.aff, route.query.aff_code)
   if (code) {
     formData.aff_code = code
+    if (invitationCodeEnabled.value && !formData.invitation_code.trim()) {
+      formData.invitation_code = code
+    }
   }
   return code
 }
