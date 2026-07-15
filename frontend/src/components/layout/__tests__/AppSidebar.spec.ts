@@ -90,3 +90,9 @@ describe('AppSidebar MCP entry', () => {
     expect(componentSource).not.toMatch(/path: '\/settings\/mcp'[^\n]*PluginIcon/)
   })
 })
+
+describe('AppSidebar invitation navigation', () => {
+  it('shows the invitation center when invite-only signup is enabled without rebates', () => {
+    expect(componentSource).toContain("appStore.cachedPublicSettings?.invitation_code_enabled === true")
+  })
+})
