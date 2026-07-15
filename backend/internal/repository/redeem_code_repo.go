@@ -70,7 +70,8 @@ func (r *redeemCodeRepository) CreateBatch(ctx context.Context, codes []service.
 }
 
 func (r *redeemCodeRepository) GetByID(ctx context.Context, id int64) (*service.RedeemCode, error) {
-	m, err := r.client.RedeemCode.Query().
+	client := clientFromContext(ctx, r.client)
+	m, err := client.RedeemCode.Query().
 		Where(redeemcode.IDEQ(id)).
 		Only(ctx)
 	if err != nil {
@@ -83,7 +84,8 @@ func (r *redeemCodeRepository) GetByID(ctx context.Context, id int64) (*service.
 }
 
 func (r *redeemCodeRepository) GetByCode(ctx context.Context, code string) (*service.RedeemCode, error) {
-	m, err := r.client.RedeemCode.Query().
+	client := clientFromContext(ctx, r.client)
+	m, err := client.RedeemCode.Query().
 		Where(redeemcode.CodeEQ(code)).
 		Only(ctx)
 	if err != nil {
@@ -198,7 +200,8 @@ func redeemCodeListOrder(params pagination.PaginationParams) []func(*entsql.Sele
 }
 
 func (r *redeemCodeRepository) Update(ctx context.Context, code *service.RedeemCode) error {
-	up := r.client.RedeemCode.UpdateOneID(code.ID).
+	client := clientFromContext(ctx, r.client)
+	up := client.RedeemCode.UpdateOneID(code.ID).
 		SetCode(code.Code).
 		SetType(code.Type).
 		SetValue(code.Value).

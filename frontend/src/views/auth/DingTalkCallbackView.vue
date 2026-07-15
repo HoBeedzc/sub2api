@@ -635,6 +635,9 @@ async function finalizePendingAccountResponse(completion: DingTalkPendingActionR
 
 async function handleSubmitInvitation() {
   invitationError.value = ''
+  if (!invitationCode.value.trim()) {
+    invitationCode.value = loadOAuthAffiliateCode()
+  }
   if (!invitationCode.value.trim()) return
 
   isSubmitting.value = true
@@ -743,6 +746,7 @@ async function handleSubmitTotpChallenge() {
 }
 
 onMounted(async () => {
+  invitationCode.value = invitationCode.value || loadOAuthAffiliateCode()
   const params = parseFragmentParams()
   const legacyLogin = readLegacyFragmentLogin(params)
   const legacyPendingToken = params.get('pending_oauth_token')?.trim() || ''

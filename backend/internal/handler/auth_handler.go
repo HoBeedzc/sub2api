@@ -535,29 +535,17 @@ func (h *AuthHandler) ValidateInvitationCode(c *gin.Context) {
 		return
 	}
 
-	// 验证邀请码
-	redeemCode, err := h.redeemService.GetByCode(c.Request.Context(), req.Code)
-	if err != nil {
-		response.Success(c, ValidateInvitationCodeResponse{
-			Valid:     false,
-			ErrorCode: "INVITATION_CODE_NOT_FOUND",
-		})
-		return
-	}
-
-	// 检查类型和状态
-	if redeemCode.Type != service.RedeemTypeInvitation {
+	if h.authService == nil {
 		response.Success(c, ValidateInvitationCodeResponse{
 			Valid:     false,
 			ErrorCode: "INVITATION_CODE_INVALID",
 		})
 		return
 	}
-
-	if redeemCode.Status != service.StatusUnused {
+	if err := h.authService.ValidateSignupInvitation(c.Request.Context(), req.Code, ""); err != nil {
 		response.Success(c, ValidateInvitationCodeResponse{
 			Valid:     false,
-			ErrorCode: "INVITATION_CODE_USED",
+			ErrorCode: "INVITATION_CODE_INVALID",
 		})
 		return
 	}

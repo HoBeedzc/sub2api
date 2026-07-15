@@ -864,6 +864,9 @@ async function finalizePendingAccountResponse(completion: PendingWeChatCompletio
 
 async function handleSubmitInvitation() {
   invitationError.value = ''
+  if (!invitationCode.value.trim()) {
+    invitationCode.value = loadOAuthAffiliateCode()
+  }
   if (!invitationCode.value.trim()) return
 
   isSubmitting.value = true
@@ -976,6 +979,7 @@ async function handleSubmitTotpChallenge() {
 }
 
 onMounted(async () => {
+  invitationCode.value = invitationCode.value || loadOAuthAffiliateCode()
   try {
     await ensurePublicSettingsLoaded()
   } catch {

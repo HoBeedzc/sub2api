@@ -525,15 +525,16 @@ export default {
   },
 
   affiliate: {
-    title: '邀请返利',
+    title: '邀请中心',
     description: '邀请新用户注册，并将返利额度转入账户余额',
+    invitationDescription: '分享邀请码或邀请链接，邀请新用户注册',
     yourCode: '我的邀请码',
     inviteLink: '邀请链接',
     copyCode: '复制邀请码',
     copyLink: '复制链接',
     codeCopied: '邀请码已复制',
     linkCopied: '邀请链接已复制',
-    loadFailed: '加载邀请返利数据失败',
+    loadFailed: '加载邀请数据失败',
     transferFailed: '转入余额失败',
     stats: {
       rebateRate: '我的返利比例',
@@ -564,7 +565,7 @@ export default {
     },
     tips: {
       title: '使用说明',
-      line1: '将邀请码或邀请链接分享给新用户。',
+      line1: '将邀请码或邀请链接分享给新用户；站点开启邀请注册时，该邀请码可直接用于注册。',
       line2: '被邀请用户充值后，你可获得 {rate} 的返利额度。',
       line3: '返利额度可随时转入账户余额。',
       line4: '新产生的返利需要经过冻结期后才能提现。'

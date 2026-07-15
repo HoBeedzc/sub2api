@@ -683,7 +683,10 @@ const ChevronDownIcon = {
 const flagChannelMonitor = makeSidebarFlag(FeatureFlags.channelMonitor)
 const flagPayment = makeSidebarFlag(FeatureFlags.payment)
 const flagAvailableChannels = makeSidebarFlag(FeatureFlags.availableChannels)
-const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
+const flagAffiliateRebate = makeSidebarFlag(FeatureFlags.affiliate)
+const flagAffiliate = () =>
+  flagAffiliateRebate() ||
+  appStore.cachedPublicSettings?.invitation_code_enabled === true
 const flagRiskControl = makeSidebarFlag(FeatureFlags.riskControl)
 const flagOpsMonitoring = () => adminSettingsStore.opsMonitoringEnabled
 const flagAdminPayment = () => adminSettingsStore.paymentEnabled

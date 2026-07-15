@@ -40,6 +40,7 @@ describe('PendingOAuthCreateAccountForm', () => {
     sendPendingOAuthVerifyCode.mockReset()
     getPublicSettings.mockReset()
     showError.mockReset()
+    window.sessionStorage.clear()
     getPublicSettings.mockResolvedValue({
       turnstile_enabled: false,
       turnstile_site_key: ''
@@ -150,6 +151,30 @@ describe('PendingOAuthCreateAccountForm', () => {
         }
       ]
     ])
+  })
+
+  it('prefills invitation-only signup from the stored user invitation code', async () => {
+    getPublicSettings.mockResolvedValue({
+      invitation_code_enabled: true,
+      email_verify_enabled: true,
+      turnstile_enabled: false,
+      turnstile_site_key: ''
+    })
+    window.sessionStorage.setItem('oauth_aff_code', 'FRIEND123')
+
+    const wrapper = mount(PendingOAuthCreateAccountForm, {
+      props: {
+        testIdPrefix: 'linuxdo',
+        initialEmail: 'prefill@example.com',
+        isSubmitting: false
+      }
+    })
+
+    await flushPromises()
+
+    expect(
+      (wrapper.get('[data-testid="linuxdo-create-account-invitation-code"]').element as HTMLInputElement).value
+    ).toBe('FRIEND123')
   })
 
   it('sends a verify code for the trimmed email value', async () => {

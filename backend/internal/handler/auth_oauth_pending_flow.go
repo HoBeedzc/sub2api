@@ -1754,13 +1754,18 @@ func (h *AuthHandler) createPendingOAuthAccount(c *gin.Context, provider string)
 		response.ErrorFrom(c, err)
 		return
 	}
+	invitationCode := strings.TrimSpace(req.InvitationCode)
+	affiliateCode := strings.TrimSpace(req.AffCode)
+	if invitationCode == "" {
+		invitationCode = affiliateCode
+	}
 
 	tokenPair, user, err := h.authService.RegisterOAuthEmailAccount(
 		c.Request.Context(),
 		email,
 		req.Password,
 		strings.TrimSpace(req.VerifyCode),
-		strings.TrimSpace(req.InvitationCode),
+		invitationCode,
 		strings.TrimSpace(session.ProviderType),
 	)
 	if err != nil {
@@ -1789,7 +1794,7 @@ func (h *AuthHandler) createPendingOAuthAccount(c *gin.Context, provider string)
 		if rollbackErr := h.authService.RollbackOAuthEmailAccountCreation(
 			c.Request.Context(),
 			user.ID,
-			strings.TrimSpace(req.InvitationCode),
+			invitationCode,
 		); rollbackErr != nil {
 			response.ErrorFrom(c, infraerrors.InternalServer(
 				"PENDING_AUTH_ACCOUNT_ROLLBACK_FAILED",
@@ -1833,9 +1838,9 @@ func (h *AuthHandler) createPendingOAuthAccount(c *gin.Context, provider string)
 	if err := h.authService.FinalizeOAuthEmailAccount(
 		txCtx,
 		user,
-		strings.TrimSpace(req.InvitationCode),
+		invitationCode,
 		strings.TrimSpace(session.ProviderType),
-		strings.TrimSpace(req.AffCode),
+		affiliateCode,
 	); err != nil {
 		_ = tx.Rollback()
 		if rollbackCreatedUser(err) {

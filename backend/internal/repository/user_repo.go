@@ -47,25 +47,26 @@ func (r *userRepository) Create(ctx context.Context, userIn *service.User) error
 		return nil
 	}
 
-	// 统一使用 ent 的事务：保证用户与允许分组的更新原子化，
-	// 并避免基于 *sql.Tx 手动构造 ent client 导致的 ExecQuerier 断言错误。
-	tx, err := r.client.Tx(ctx)
-	if err != nil && !errors.Is(err, dbent.ErrTxStarted) {
-		return err
-	}
-
+	// 复用调用方事务，使用户创建可以和邀请码消费/邀请关系绑定原子提交。
+	var tx *dbent.Tx
+	var err error
 	var txClient *dbent.Client
 	txCtx := ctx
-	if err == nil {
-		defer func() { _ = tx.Rollback() }()
-		txClient = tx.Client()
-		txCtx = dbent.NewTxContext(ctx, tx)
+	if existingTx := dbent.TxFromContext(ctx); existingTx != nil {
+		txClient = existingTx.Client()
 	} else {
-		// 已处于外部事务中（ErrTxStarted），复用当前事务 client 并由调用方负责提交/回滚。
-		if existingTx := dbent.TxFromContext(ctx); existingTx != nil {
-			txClient = existingTx.Client()
-		} else {
+		tx, err = r.client.Tx(ctx)
+		switch {
+		case err == nil:
+			defer func() { _ = tx.Rollback() }()
+			txClient = tx.Client()
+			txCtx = dbent.NewTxContext(ctx, tx)
+		case errors.Is(err, dbent.ErrTxStarted):
+			// Some integration callers construct the repository with tx.Client()
+			// and own the transaction without attaching it to the context.
 			txClient = r.client
+		default:
+			return err
 		}
 	}
 

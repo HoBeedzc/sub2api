@@ -115,7 +115,7 @@ export default {
         promoCode: 'Promo Code',
         promoCodeHint: 'Allow users to use promo codes during registration',
         invitationCode: 'Invitation Code Registration',
-        invitationCodeHint: 'When enabled, users must enter a valid invitation code to register',
+        invitationCodeHint: 'Require either a one-time admin invitation or an existing user invitation code at signup',
         passwordReset: 'Password Reset',
         passwordResetHint: 'Allow users to reset their password via email',
         frontendUrl: 'Frontend URL',
