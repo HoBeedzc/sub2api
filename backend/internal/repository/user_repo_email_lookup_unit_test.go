@@ -149,6 +149,51 @@ func TestUserRepositoryGetByEmailReportsNormalizedEmailConflict(t *testing.T) {
 	require.ErrorContains(t, err, "normalized email lookup matched multiple users")
 }
 
+func TestUserRepositoryCreateReusesTransactionFromContext(t *testing.T) {
+	repo, client := newUserEntRepo(t)
+	ctx := context.Background()
+	tx, err := client.Tx(ctx)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback() }()
+
+	user := &service.User{
+		Email:        "context-tx@example.com",
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+	}
+	require.NoError(t, repo.Create(dbent.NewTxContext(ctx, tx), user))
+	require.Positive(t, user.ID)
+	require.NoError(t, tx.Rollback())
+
+	count, err := client.User.Query().Where(userEmailLookupPredicate(user.Email)).Count(ctx)
+	require.NoError(t, err)
+	require.Zero(t, count)
+}
+
+func TestUserRepositoryCreateSupportsTransactionalClientWithoutContextMarker(t *testing.T) {
+	_, client := newUserEntRepo(t)
+	ctx := context.Background()
+	tx, err := client.Tx(ctx)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback() }()
+	repo := newUserRepositoryWithSQL(tx.Client(), tx)
+
+	user := &service.User{
+		Email:        "transaction-client@example.com",
+		PasswordHash: "hash",
+		Role:         service.RoleUser,
+		Status:       service.StatusActive,
+	}
+	require.NoError(t, repo.Create(ctx, user))
+	require.Positive(t, user.ID)
+	require.NoError(t, tx.Commit())
+
+	count, err := client.User.Query().Where(userEmailLookupPredicate(user.Email)).Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+}
+
 func TestUserRepositoryCreateSerializesNormalizedEmailConflictsUnderConcurrency(t *testing.T) {
 	repo, client := newUserEntRepo(t)
 	ctx := context.Background()
