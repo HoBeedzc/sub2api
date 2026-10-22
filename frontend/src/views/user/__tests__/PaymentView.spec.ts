@@ -4,6 +4,7 @@ import PaymentView from '../PaymentView.vue'
 import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
 import { formatPaymentAmount } from '@/components/payment/currency'
 import AmountInput from '@/components/payment/AmountInput.vue'
+import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vue'
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
 import en from '@/i18n/locales/en'
 import zh from '@/i18n/locales/zh'
@@ -61,12 +62,13 @@ vi.mock('vue-i18n', async () => {
   }
 })
 
-vi.mock('@/stores/auth', () => ({
-  useAuthStore: () => ({
-    user: authUser,
-    refreshUser,
-  }),
-}))
+vi.mock('@/stores/auth', async () => {
+  const { reactive } = await import('vue')
+  const user = reactive(authUser)
+  return {
+    useAuthStore: () => ({ user, refreshUser }),
+  }
+})
 
 vi.mock('@/stores/payment', () => ({
   usePaymentStore: () => ({
@@ -175,10 +177,12 @@ function checkoutInfoWithPlansFixture(options: {
       ...base,
       methods: {
         ...base.methods,
-        wxpay: {
-          ...base.methods.wxpay,
-          ...options.method,
-        },
+        ...(base.methods.wxpay ? {
+          wxpay: {
+            ...base.methods.wxpay,
+            ...options.method,
+          },
+        } : {}),
       },
       plans: [plan],
     },
@@ -236,11 +240,13 @@ async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoW
   routerPush.mockReset().mockResolvedValue(undefined)
   routerResolve.mockClear()
   createOrder.mockReset()
-  refreshUser.mockReset()
+  purchasePlanWithBalance.mockReset()
+  refreshUser.mockReset().mockResolvedValue(undefined)
   fetchActiveSubscriptions.mockReset().mockResolvedValue(undefined)
   showError.mockReset()
   showInfo.mockReset()
   showWarning.mockReset()
+  showSuccess.mockReset()
   getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoWithPlansFixture(options))
   bridgeInvoke.mockReset()
   window.localStorage.clear()
@@ -504,6 +510,207 @@ describe('PaymentView subscription confirmation amounts', () => {
     expect(text).toContain(fee)
     expect(text).toContain(total)
     expect(wrapper.findAll('button').some(button => button.text().includes(total))).toBe(true)
+  })
+})
+
+describe('PaymentView subscription balance purchase', () => {
+  beforeEach(() => {
+    authUser.balance = 200
+  })
+
+  afterEach(() => {
+    authUser.balance = 0
+    translate.mockImplementation((key: string) => key)
+    vi.restoreAllMocks()
+  })
+
+  const purchaseResult = {
+    subscription: null,
+    created: true,
+    balance: 72,
+    charged_amount: 128,
+    plan_id: 7,
+  }
+
+  it('purchases with balance and refreshes the account and subscriptions without creating a gateway order', async () => {
+    const wrapper = await mountSubscriptionConfirm()
+    purchasePlanWithBalance.mockResolvedValue(purchaseResult)
+
+    expect(wrapper.get('[data-testid="subscription-balance-summary"]').text()).toContain('$72.00')
+    expect(wrapper.findComponent(PaymentMethodSelector).exists()).toBe(true)
+    await wrapper.get('[data-testid="subscription-balance-purchase"]').trigger('click')
+    await flushPromises()
+
+    expect(purchasePlanWithBalance).toHaveBeenCalledWith(7, expect.stringMatching(/^sub_purchase:7:/))
+    expect(authUser.balance).toBe(72)
+    expect(refreshUser).toHaveBeenCalledTimes(1)
+    expect(fetchActiveSubscriptions).toHaveBeenCalledWith(true)
+    expect(showSuccess).toHaveBeenCalledWith('payment.subscriptionPurchaseSuccess')
+    expect(wrapper.find('[data-testid="subscription-balance-purchase"]').exists()).toBe(false)
+    expect(createOrder).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('disables balance purchase when funds are insufficient without disabling third-party payment', async () => {
+    authUser.balance = 50
+    const wrapper = await mountSubscriptionConfirm()
+    const balanceButton = wrapper.get('[data-testid="subscription-balance-purchase"]')
+    const gatewayButton = wrapper.findAll('button').find(button => button.text().includes('payment.createOrder'))!
+
+    expect(balanceButton.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('payment.insufficientBalanceForPlan')
+    expect(gatewayButton.attributes('disabled')).toBeUndefined()
+    await balanceButton.trigger('click')
+    expect(purchasePlanWithBalance).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])('rejects invalid balance purchase price %s', async (price) => {
+    const wrapper = await mountSubscriptionConfirm({ plan: { price } })
+    const button = wrapper.get('[data-testid="subscription-balance-purchase"]')
+    expect(button.attributes('disabled')).toBeDefined()
+    await button.trigger('click')
+    expect(purchasePlanWithBalance).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('allows spending the exact balance without applying gateway rates, limits, or fees', async () => {
+    authUser.balance = 9.99
+    const wrapper = await mountSubscriptionConfirm({
+      checkout: { balance_recharge_multiplier: 0.14, subscription_usd_to_cny_rate: 7.15, recharge_fee_rate: 2.5, invoice_fee_rate: 6 },
+      method: { currency: 'CNY', available: false, single_min: 100 },
+      plan: { price: 9.99 },
+    })
+
+    const summary = wrapper.get('[data-testid="subscription-balance-summary"]')
+    expect(summary.text()).toContain('$9.99')
+    expect(summary.text()).toContain('$0.00')
+    expect(summary.text()).not.toContain(formatPaymentAmount(71.43, 'CNY'))
+    expect(wrapper.get('[data-testid="subscription-balance-purchase"]').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('works without third-party methods even when balance recharge is disabled', async () => {
+    const wrapper = await mountSubscriptionConfirm({ checkout: { methods: {}, balance_disabled: true } })
+    purchasePlanWithBalance.mockResolvedValue(purchaseResult)
+
+    expect(wrapper.findComponent(PaymentMethodSelector).exists()).toBe(false)
+    await wrapper.get('[data-testid="subscription-balance-purchase"]').trigger('click')
+    await flushPromises()
+    expect(purchasePlanWithBalance).toHaveBeenCalledTimes(1)
+    expect(createOrder).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('blocks duplicate clicks and simultaneous gateway payment while a balance purchase is pending', async () => {
+    const wrapper = await mountSubscriptionConfirm()
+    let resolvePurchase!: (value: typeof purchaseResult) => void
+    purchasePlanWithBalance.mockReturnValue(new Promise(resolve => { resolvePurchase = resolve }))
+    const balanceButton = wrapper.get('[data-testid="subscription-balance-purchase"]')
+
+    await balanceButton.trigger('click')
+    expect(balanceButton.attributes('disabled')).toBeDefined()
+    const gatewayButton = wrapper.findAll('button').find(button => button.text().includes('common.processing') && button.element !== balanceButton.element)!
+    expect(gatewayButton.attributes('disabled')).toBeDefined()
+    await balanceButton.trigger('click')
+    await gatewayButton.trigger('click')
+    expect(purchasePlanWithBalance).toHaveBeenCalledTimes(1)
+    expect(createOrder).not.toHaveBeenCalled()
+
+    resolvePurchase(purchaseResult)
+    await flushPromises()
+    wrapper.unmount()
+  })
+
+  it('keeps a failed purchase retryable and reuses its idempotency key', async () => {
+    const wrapper = await mountSubscriptionConfirm()
+    purchasePlanWithBalance.mockRejectedValueOnce(new Error('Network error')).mockResolvedValueOnce(purchaseResult)
+    await wrapper.get('[data-testid="subscription-balance-purchase"]').trigger('click')
+    await flushPromises()
+
+    expect(showError).toHaveBeenCalledWith('Network error')
+    expect(showSuccess).not.toHaveBeenCalled()
+    expect(authUser.balance).toBe(200)
+    expect(wrapper.get('[data-testid="subscription-balance-purchase"]').attributes('disabled')).toBeUndefined()
+    await wrapper.get('[data-testid="subscription-balance-purchase"]').trigger('click')
+    await flushPromises()
+
+    expect(purchasePlanWithBalance.mock.calls[1]).toEqual(purchasePlanWithBalance.mock.calls[0])
+    expect(showSuccess).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('shows a localized error if the server rejects a stale balance', async () => {
+    const wrapper = await mountSubscriptionConfirm()
+    translate.mockImplementation((key: string) =>
+      key === 'payment.errors.INSUFFICIENT_BALANCE' ? zh.payment.errors.INSUFFICIENT_BALANCE : key
+    )
+    purchasePlanWithBalance.mockRejectedValue({ reason: 'INSUFFICIENT_BALANCE', message: 'insufficient balance' })
+    await wrapper.get('[data-testid="subscription-balance-purchase"]').trigger('click')
+    await flushPromises()
+
+    expect(showError).toHaveBeenCalledWith(zh.payment.errors.INSUFFICIENT_BALANCE)
+    expect(showSuccess).not.toHaveBeenCalled()
+    expect(authUser.balance).toBe(200)
+    expect(wrapper.get('[data-testid="subscription-balance-purchase"]').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('does not report a completed purchase as failed when follow-up refreshes fail', async () => {
+    const wrapper = await mountSubscriptionConfirm()
+    const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    purchasePlanWithBalance.mockResolvedValue(purchaseResult)
+    refreshUser.mockRejectedValue(new Error('Refresh failed'))
+    fetchActiveSubscriptions.mockRejectedValue(new Error('Refresh failed'))
+    await wrapper.get('[data-testid="subscription-balance-purchase"]').trigger('click')
+    await flushPromises()
+
+    expect(authUser.balance).toBe(72)
+    expect(fetchActiveSubscriptions).toHaveBeenCalledWith(true)
+    expect(logError).toHaveBeenCalledTimes(2)
+    expect(showSuccess).toHaveBeenCalledWith('payment.subscriptionPurchaseSuccess')
+    expect(showError).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="subscription-balance-purchase"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('preserves third-party subscription checkout with insufficient balance', async () => {
+    authUser.balance = 0
+    const wrapper = await mountSubscriptionConfirm({
+      checkout: { subscription_usd_to_cny_rate: 7.15, recharge_fee_rate: 2.5 },
+      method: { currency: 'CNY' },
+      plan: { price: 9.99 },
+    })
+    createOrder.mockResolvedValue({ ...jsapiOrderFixture(''), qr_code: 'subscription-qr', result_type: 'qr_ready' })
+    const gatewayButton = wrapper.findAll('button').find(button => button.text().includes('payment.createOrder'))!
+    await gatewayButton.trigger('click')
+    await flushPromises()
+
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({
+      amount: 9.99,
+      order_type: 'subscription',
+      plan_id: 7,
+      payment_type: 'wxpay',
+    }))
+    expect(purchasePlanWithBalance).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('prevents a balance purchase while gateway checkout is pending', async () => {
+    const wrapper = await mountSubscriptionConfirm()
+    let resolveOrder!: (value: ReturnType<typeof jsapiOrderFixture>) => void
+    createOrder.mockReturnValue(new Promise(resolve => { resolveOrder = resolve }))
+    const gatewayButton = wrapper.findAll('button').find(button => button.text().includes('payment.createOrder'))!
+    await gatewayButton.trigger('click')
+    const balanceButton = wrapper.get('[data-testid="subscription-balance-purchase"]')
+
+    expect(balanceButton.attributes('disabled')).toBeDefined()
+    await balanceButton.trigger('click')
+    expect(purchasePlanWithBalance).not.toHaveBeenCalled()
+
+    resolveOrder(jsapiOrderFixture(''))
+    await flushPromises()
+    wrapper.unmount()
   })
 })
 
@@ -895,6 +1102,7 @@ describe('PaymentView subscription feature flag', () => {
     expect(tabLabels(wrapper)).toEqual([])
     expect(wrapper.findAllComponents(SubscriptionPlanCard)).toHaveLength(0)
     expect(wrapper.text()).not.toContain('payment.confirmSubscription')
+    expect(wrapper.find('[data-testid="subscription-balance-purchase"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('payment.rechargeAccount')
     expect(wrapper.text()).toContain('payment.billingUnavailable')
     wrapper.unmount()
