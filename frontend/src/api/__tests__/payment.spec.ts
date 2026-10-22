@@ -37,4 +37,13 @@ describe('payment api', () => {
       resume_token: 'resume-token-123',
     })
   })
+
+  it('forwards the balance purchase idempotency key without creating a gateway order', async () => {
+    await paymentAPI.purchasePlanWithBalance(7, 'sub_purchase:7:retry-key')
+
+    expect(post).toHaveBeenCalledTimes(1)
+    expect(post).toHaveBeenCalledWith('/payment/plans/7/purchase', {}, {
+      headers: { 'Idempotency-Key': 'sub_purchase:7:retry-key' },
+    })
+  })
 })
