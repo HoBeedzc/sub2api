@@ -183,6 +183,34 @@
                   </div>
                 </div>
               </div>
+              <div class="card space-y-4 p-6" data-testid="subscription-balance-summary">
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between gap-3">
+                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.currentBalance') }}</span>
+                    <span class="font-semibold text-gray-900 dark:text-white">{{ formatBalanceAmount(currentUserBalance) }}</span>
+                  </div>
+                  <div class="flex justify-between gap-3">
+                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.planPrice') }}</span>
+                    <span class="text-gray-900 dark:text-white">-{{ formatBalanceAmount(subscriptionPrice) }}</span>
+                  </div>
+                  <div class="flex justify-between gap-3 border-t border-gray-200 pt-2 dark:border-dark-600">
+                    <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.balanceAfterPurchase') }}</span>
+                    <span :class="['text-lg font-bold', subscriptionBalanceEnough ? 'text-primary-600 dark:text-primary-400' : 'text-red-600 dark:text-red-400']">
+                      {{ formatBalanceAmount(balanceAfterSubscription) }}
+                    </span>
+                  </div>
+                  <p v-if="!subscriptionBalanceEnough" class="text-xs text-red-600 dark:text-red-400">
+                    {{ t('payment.insufficientBalanceForPlan', { balance: formatBalanceAmount(currentUserBalance), price: formatBalanceAmount(subscriptionPrice) }) }}
+                  </p>
+                </div>
+                <button class="btn btn-primary w-full py-3 text-base font-medium" :disabled="!canPurchaseSubscriptionWithBalance" data-testid="subscription-balance-purchase" @click="confirmSubscribeWithBalance">
+                  <span v-if="submitting" class="flex items-center justify-center gap-2">
+                    <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                    {{ t('common.processing') }}
+                  </span>
+                  <span v-else>{{ t('payment.purchaseWithBalance') }} {{ formatBalanceAmount(subscriptionPrice) }}</span>
+                </button>
+              </div>
               <div v-if="enabledMethods.length >= 1" class="card p-6">
                 <PaymentMethodSelector
                   :methods="subMethodOptions"
@@ -213,7 +241,7 @@
                 </span>
                 <span v-else>{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(subTotalAmount) }}</span>
               </button>
-              <button class="btn btn-secondary w-full" @click="selectedPlan = null">{{ t('common.cancel') }}</button>
+              <button class="btn btn-secondary w-full" :disabled="submitting" @click="selectedPlan = null">{{ t('common.cancel') }}</button>
             </template>
             <!-- Plan list -->
             <template v-else>
@@ -365,6 +393,7 @@ const activeTab = ref<'recharge' | 'subscription'>('recharge')
 const amount = ref<number | null>(null)
 const selectedMethod = ref('')
 const selectedPlan = ref<SubscriptionPlan | null>(null)
+const subscriptionPurchaseKey = ref('')
 const previewImage = ref('')
 const invoiceRequested = ref(false)
 
@@ -597,6 +626,23 @@ const subscriptionUsdToCnyRate = computed(() => {
 })
 const rechargeBonusTiers = computed(() => normalizeRechargeBonusTiers(checkout.value.recharge_bonus_tiers))
 const rechargeBonusMode = computed(() => normalizeRechargeBonusMode(checkout.value.recharge_bonus_mode))
+const currentUserBalance = computed(() => user.value?.balance ?? 0)
+// The balance purchase endpoint charges plan.price directly, without gateway conversion or fees.
+const subscriptionPrice = computed(() => selectedPlan.value?.price ?? 0)
+const balanceAfterSubscription = computed(() =>
+  Math.round((currentUserBalance.value - subscriptionPrice.value) * 100) / 100
+)
+const subscriptionBalanceEnough = computed(() => currentUserBalance.value >= subscriptionPrice.value)
+const canPurchaseSubscriptionWithBalance = computed(() =>
+  subscriptionEnabled.value
+    && selectedPlan.value !== null
+    && Number.isFinite(subscriptionPrice.value)
+    && subscriptionPrice.value > 0
+    && subscriptionBalanceEnough.value
+    && !submitting.value
+)
+
+watch(selectedPlan, () => { subscriptionPurchaseKey.value = '' })
 
 // Adaptive grid: center single card, 2-col for 2 plans, 3-col for 3+
 const planGridClass = computed(() => {
@@ -676,6 +722,10 @@ function formatSelectedPaymentAmount(value: number): string {
 
 function formatSelectedSubscriptionPaymentAmount(value: number): string {
   return formatSelectedPaymentAmount(subscriptionPaymentAmountForCurrency(value, selectedCurrency.value))
+}
+
+function formatBalanceAmount(value: number): string {
+  return formatPaymentAmount(value, 'USD', localeCode.value)
 }
 
 // 充值优惠：阈值按输入金额命中；赠金模式按到账基数（输入 × 倍率）加赠送，折扣模式按百分比减实付。
@@ -852,6 +902,40 @@ async function handleSubmitRecharge() {
 async function confirmSubscribe() {
   if (!selectedPlan.value || submitting.value) return
   await createOrder(selectedPlan.value.price, 'subscription', selectedPlan.value.id)
+}
+
+async function confirmSubscribeWithBalance() {
+  if (!selectedPlan.value || !canPurchaseSubscriptionWithBalance.value) return
+  const planId = selectedPlan.value.id
+  if (!subscriptionPurchaseKey.value) {
+    const randomPart = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    subscriptionPurchaseKey.value = `sub_purchase:${planId}:${randomPart}`
+  }
+
+  submitting.value = true
+  errorMessage.value = ''
+  errorHintMessage.value = ''
+  try {
+    // Retain the key on failure so retrying a lost response cannot charge twice.
+    const result = await paymentStore.purchasePlanWithBalance(planId, subscriptionPurchaseKey.value)
+    if (authStore.user) authStore.user.balance = result.balance
+    await authStore.refreshUser().catch((err: unknown) => {
+      console.error('[payment] Failed to refresh user after subscription purchase:', err)
+    })
+    await subscriptionStore.fetchActiveSubscriptions(true).catch((err: unknown) => {
+      console.error('[payment] Failed to refresh subscriptions after balance purchase:', err)
+    })
+    selectedPlan.value = null
+    appStore.showSuccess(t('payment.subscriptionPurchaseSuccess'))
+  } catch (err: unknown) {
+    const message = extractI18nErrorMessage(err, t, 'payment.errors', t('payment.result.failed'))
+    errorMessage.value = message
+    appStore.showError(message)
+  } finally {
+    submitting.value = false
+  }
 }
 
 async function createOrder(orderAmount: number, orderType: OrderType, planId?: number, options: CreateOrderOptions = {}) {
