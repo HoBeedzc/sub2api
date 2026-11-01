@@ -1,7 +1,6 @@
 export default {
   dashboard: {
     title: 'Dashboard',
-    welcomeMessage: "Welcome back! Here's an overview of your account.",
     balance: 'Balance',
     apiKeys: 'API Keys',
     todayRequests: 'Today Requests',
@@ -46,7 +45,6 @@ export default {
     recentUsage: 'Recent Usage',
     last7Days: 'Last 7 days',
     noUsageRecords: 'No usage records',
-    startUsingApi: 'Start using the API to see your usage history here.',
     viewAllUsage: 'View all usage',
     quickActions: 'Quick Actions',
     createApiKey: 'Create API Key',
@@ -67,7 +65,6 @@ export default {
   // API Keys
   keys: {
     title: 'API Keys',
-    description: 'Manage your API keys and access tokens',
     searchPlaceholder: 'Search name or key...',
     endpoints: {
       title: 'API Endpoints',
@@ -124,8 +121,6 @@ export default {
       other: 'Other'
     },
     providerHints: {
-      anthropic: 'Choose an available Anthropic / Claude group',
-      openai: 'Choose an available OpenAI / GPT group',
       domestic: 'Includes DeepSeek, Kimi, Zhipu GLM and MiniMax',
       other: 'Includes Gemini, Grok, Antigravity, OpenCode and mixed groups'
     },
@@ -134,7 +129,6 @@ export default {
     selectStatus: 'Select status',
     saving: 'Saving...',
     noKeysYet: 'No API keys yet',
-    createFirstKey: 'Create your first API key to get started with the API.',
     keyCreatedSuccess: 'API key created successfully',
     keyUpdatedSuccess: 'API key updated successfully',
     keyDeletedSuccess: 'API key deleted successfully',
@@ -290,7 +284,7 @@ export default {
     quotaLimit: 'Quota Limit',
     quotaAmount: 'Quota Amount (USD)',
     quotaAmountPlaceholder: 'Enter quota limit in USD',
-    quotaAmountHint: 'Set the maximum amount this key can spend. 0 = unlimited.',
+    quotaAmountHint: '0 = unlimited',
     quotaUsed: 'Quota Used',
     reset: 'Reset',
     resetQuotaUsed: 'Reset used quota to 0',
@@ -304,7 +298,7 @@ export default {
     rateLimit5h: '5-Hour Limit (USD)',
     rateLimit1d: 'Daily Limit (USD)',
     rateLimit7d: '7-Day Limit (USD)',
-    rateLimitHint: 'Set the maximum spending for this key within each time window. 0 = unlimited.',
+    rateLimitHint: '0 = unlimited',
     rateLimitUsage: 'Rate Limit Usage',
     resetRateLimitUsage: 'Reset Rate Limit Usage',
     resetRateLimitTitle: 'Confirm Reset Rate Limit',
@@ -317,7 +311,6 @@ export default {
     extendDays: '+{days} days',
     customDate: 'Custom',
     expirationDate: 'Expiration Date',
-    expirationDateHint: 'Select when this API key should expire.',
     currentExpiration: 'Current expiration',
     expiresAt: 'Expires',
     noExpiration: 'Never',
@@ -332,7 +325,6 @@ export default {
   // Usage
   usage: {
     title: 'Usage Records',
-    description: 'View and analyze your API usage history',
     costDetails: 'Cost Breakdown',
     tokenDetails: 'Token Breakdown',
     cacheTtlOverriddenHint: 'Cache TTL Override enabled',
@@ -567,7 +559,6 @@ export default {
   // Channel Status (user-facing read-only view)
   channelStatus: {
     title: 'Channel Status',
-    description: 'Inspect channel availability, latency and recent status',
     searchPlaceholder: 'Search channels...',
     allProviders: 'All Providers',
     loadError: 'Failed to load channel status',
@@ -716,7 +707,6 @@ export default {
   affiliate: {
     title: 'Invitations',
     description: 'Invite new users and convert your rebate quota into account balance',
-    invitationDescription: 'Share your invitation code or link to invite new users',
     yourCode: 'Your Affiliate Code',
     inviteLink: 'Invite Link',
     copyCode: 'Copy Code',
@@ -736,7 +726,6 @@ export default {
     },
     transfer: {
       title: 'Transfer Rebate Quota',
-      description: 'Move available rebate quota into your account balance',
       button: 'Transfer to Balance',
       transferring: 'Transferring...',
       empty: 'No available rebate quota',
@@ -753,24 +742,19 @@ export default {
       }
     },
     tips: {
-      title: 'How It Works',
-      line1: 'Share your code or invite link; when invite-only signup is enabled, it can be used to create an account.',
-      line2: 'When invitees recharge, you receive {rate} of the recharge as rebate quota.',
-      line3: 'Transfer rebate quota to balance at any time.',
-      line4: 'Newly earned rebates may have a waiting period before they can be transferred.'
+      frozenNote: 'Newly earned rebates may have a waiting period before they can be transferred.'
     }
   },
 
   // Redeem
   redeem: {
     title: 'Redeem Code',
-    description: 'Enter your redeem code to add balance or increase concurrency',
+    description: 'Redeem codes for balance, extra concurrency, or subscription access',
     currentBalance: 'Current Balance',
     concurrency: 'Concurrency',
     requests: 'requests',
     redeemCodeLabel: 'Redeem Code',
-    redeemCodePlaceholder: 'Enter your redeem code',
-    redeemCodeHint: 'Redeem codes are case-sensitive',
+    redeemCodePlaceholder: 'Enter your redeem code (case-sensitive)',
     redeeming: 'Redeeming...',
     redeemButton: 'Redeem Code',
     redeemSuccess: 'Code Redeemed Successfully!',
@@ -779,13 +763,8 @@ export default {
     concurrentRequests: 'concurrent requests',
     newBalance: 'New Balance',
     newConcurrency: 'New Concurrency',
-    aboutCodes: 'About Redeem Codes',
-    codeRule1: 'Each code can only be used once',
-    codeRule2: 'Codes may add balance, increase concurrency, or grant trial access',
-    codeRule3: 'Contact support if you have issues redeeming a code',
-    codeRule4: 'Balance and concurrency updates are immediate',
     recentActivity: 'Recent Activity',
-    historyWillAppear: 'Your redemption history will appear here',
+    noHistory: 'No redemptions yet',
     balanceAddedRedeem: 'Balance Added (Redeem)',
     balanceAddedAffiliate: 'Balance Added (Affiliate Transfer)',
     balanceAddedAdmin: 'Balance Added (Admin)',
@@ -810,20 +789,14 @@ export default {
   // Profile
   profile: {
     title: 'Profile Settings',
-    description: 'Manage your account information and settings',
     accountBalance: 'Account Balance',
     concurrencyLimit: 'Concurrency Limit',
     rpmLimit: 'RPM Limit',
     rpmUnlimited: 'Unlimited',
     memberSince: 'Member Since',
-    overviewTitle: 'Account Overview',
-    overviewDescription: 'Check account status, profile sources, and common actions at a glance.',
     basicsTitle: 'Profile & Avatar',
-    basicsDescription: 'Keep your public profile details and avatar aligned.',
     linkedProfileSources: 'Profile Sources',
     linkedProfileSourcesDescription: 'Some profile details may stay synced from third-party sign-in methods.',
-    securityTitle: 'Security Settings',
-    securityDescription: 'Password, two-factor authentication, and alerts live in the right rail.',
     administrator: 'Administrator',
     user: 'User',
     username: 'Username',
@@ -855,7 +828,6 @@ export default {
       enabled: 'Enabled',
       enabledAt: 'Enabled at',
       notEnabled: 'Not Enabled',
-      notEnabledHint: 'Enable two-factor authentication to enhance account security',
       enable: 'Enable',
       disable: 'Disable',
       featureDisabled: 'Feature Unavailable',
@@ -946,7 +918,6 @@ export default {
     },
     avatar: {
       title: 'Profile Avatar',
-      description: 'Upload an avatar image. Static uploads are compressed to 20KB before saving.',
       uploadAction: 'Upload image',
       uploadHint: 'Static uploads are compressed to 20KB when possible. GIF uploads must already be within 20KB.',
       uploadRequired: 'Upload an avatar image first',

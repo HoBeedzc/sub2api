@@ -1,7 +1,6 @@
 export default {
   dashboard: {
     title: '仪表盘',
-    welcomeMessage: '欢迎回来！这是您账户的概览。',
     balance: '余额',
     apiKeys: 'API 密钥',
     todayRequests: '今日请求',
@@ -46,7 +45,6 @@ export default {
     recentUsage: '最近使用',
     last7Days: '近 7 天',
     noUsageRecords: '暂无使用记录',
-    startUsingApi: '开始使用 API 后，您的使用历史将显示在这里。',
     viewAllUsage: '查看全部',
     quickActions: '快捷操作',
     createApiKey: '创建 API 密钥',
@@ -67,7 +65,6 @@ export default {
   // API Keys
   keys: {
     title: 'API 密钥',
-    description: '管理您的 API 密钥和访问令牌',
     searchPlaceholder: '搜索名称或Key...',
     endpoints: {
       title: 'API 端点',
@@ -124,8 +121,6 @@ export default {
       other: '其他'
     },
     providerHints: {
-      anthropic: '选择 Anthropic / Claude 的可用分组',
-      openai: '选择 OpenAI / GPT 的可用分组',
       domestic: '包含 DeepSeek、Kimi、智谱 GLM、MiniMax',
       other: '包含 Gemini、Grok、Antigravity、OpenCode 和混合分组'
     },
@@ -134,7 +129,6 @@ export default {
     selectStatus: '选择状态',
     saving: '保存中...',
     noKeysYet: '暂无 API 密钥',
-    createFirstKey: '创建您的第一个 API 密钥以开始使用 API。',
     keyCreatedSuccess: 'API 密钥创建成功',
     keyUpdatedSuccess: 'API 密钥更新成功',
     keyDeletedSuccess: 'API 密钥删除成功',
@@ -295,7 +289,7 @@ export default {
     quotaLimit: '额度限制',
     quotaAmount: '额度金额 (USD)',
     quotaAmountPlaceholder: '输入 USD 额度限制',
-    quotaAmountHint: '设置此密钥可消费的最大金额。0 = 无限制。',
+    quotaAmountHint: '0 = 无限制',
     quotaUsed: '已用额度',
     reset: '重置',
     resetQuotaUsed: '将已用额度重置为 0',
@@ -309,7 +303,7 @@ export default {
     rateLimit5h: '5小时限额 (USD)',
     rateLimit1d: '日限额 (USD)',
     rateLimit7d: '7天限额 (USD)',
-    rateLimitHint: '设置此密钥在指定时间窗口内的最大消费额。0 = 无限制。',
+    rateLimitHint: '0 = 无限制',
     rateLimitUsage: '速率限制用量',
     resetRateLimitUsage: '重置速率限制用量',
     resetRateLimitTitle: '确认重置速率限制',
@@ -322,7 +316,6 @@ export default {
     extendDays: '+{days} 天',
     customDate: '自定义',
     expirationDate: '过期时间',
-    expirationDateHint: '选择此 API 密钥的过期时间。',
     currentExpiration: '当前过期时间',
     expiresAt: '过期时间',
     noExpiration: '永久有效',
@@ -337,7 +330,6 @@ export default {
   // Usage
   usage: {
     title: '使用记录',
-    description: '查看和分析您的 API 使用历史',
     costDetails: '费用明细',
     tokenDetails: 'Token 明细',
     cacheTtlOverriddenHint: '缓存 TTL Override 已启用',
@@ -572,7 +564,6 @@ export default {
   // Channel Status (user-facing read-only view)
   channelStatus: {
     title: '渠道状态',
-    description: '查看渠道可用性、延迟和近期状态',
     searchPlaceholder: '搜索渠道...',
     allProviders: '全部供应商',
     loadError: '加载渠道状态失败',
@@ -720,7 +711,6 @@ export default {
   affiliate: {
     title: '邀请中心',
     description: '邀请新用户注册，并将返利额度转入账户余额',
-    invitationDescription: '分享邀请码或邀请链接，邀请新用户注册',
     yourCode: '我的邀请码',
     inviteLink: '邀请链接',
     copyCode: '复制邀请码',
@@ -740,7 +730,6 @@ export default {
     },
     transfer: {
       title: '返利额度转余额',
-      description: '将当前可用返利额度一键转入账户余额',
       button: '转入余额',
       transferring: '转入中...',
       empty: '当前没有可转入额度',
@@ -757,24 +746,19 @@ export default {
       }
     },
     tips: {
-      title: '使用说明',
-      line1: '将邀请码或邀请链接分享给新用户；站点开启邀请注册时，该邀请码可直接用于注册。',
-      line2: '被邀请用户充值后，你可获得 {rate} 的返利额度。',
-      line3: '返利额度可随时转入账户余额。',
-      line4: '新产生的返利需要经过冻结期后才能提现。'
+      frozenNote: '新产生的返利需要经过冻结期后才能提现。'
     }
   },
 
   // Redeem
   redeem: {
     title: '兑换码',
-    description: '输入兑换码以充值余额或增加并发数',
+    description: '输入兑换码以充值余额、增加并发数或开通订阅',
     currentBalance: '当前余额',
     concurrency: '并发数',
     requests: '请求',
     redeemCodeLabel: '兑换码',
-    redeemCodePlaceholder: '请输入兑换码',
-    redeemCodeHint: '兑换码区分大小写',
+    redeemCodePlaceholder: '请输入兑换码（区分大小写）',
     redeeming: '兑换中...',
     redeemButton: '兑换',
     redeemSuccess: '兑换成功！',
@@ -783,13 +767,8 @@ export default {
     concurrentRequests: '并发请求',
     newBalance: '新余额',
     newConcurrency: '新并发数',
-    aboutCodes: '关于兑换码',
-    codeRule1: '每个兑换码只能使用一次',
-    codeRule2: '兑换码可以增加余额、并发数或试用权限',
-    codeRule3: '如有兑换问题，请联系客服',
-    codeRule4: '余额和并发数即时更新',
     recentActivity: '最近活动',
-    historyWillAppear: '您的兑换历史将显示在这里',
+    noHistory: '暂无兑换记录',
     balanceAddedRedeem: '余额充值（兑换）',
     balanceAddedAffiliate: '余额充值（返利转入）',
     balanceAddedAdmin: '余额充值（管理员）',
@@ -814,20 +793,14 @@ export default {
   // Profile
   profile: {
     title: '个人设置',
-    description: '管理您的账户信息和设置',
     accountBalance: '账户余额',
     concurrencyLimit: '并发限制',
     rpmLimit: 'RPM 限制',
     rpmUnlimited: '不限制',
     memberSince: '注册时间',
-    overviewTitle: '账户总览',
-    overviewDescription: '快速查看账号状态、资料来源与常用设置。',
     basicsTitle: '资料与头像',
-    basicsDescription: '维护公开展示信息，并保持头像与昵称风格一致。',
     linkedProfileSources: '资料来源',
     linkedProfileSourcesDescription: '部分头像和昵称可能同步自第三方登录方式。',
-    securityTitle: '安全设置',
-    securityDescription: '密码、双因素认证和通知提醒集中放在右侧。',
     administrator: '管理员',
     user: '用户',
     username: '用户名',
@@ -859,7 +832,6 @@ export default {
       enabled: '已启用',
       enabledAt: '启用时间',
       notEnabled: '未启用',
-      notEnabledHint: '启用双因素认证可以增强账户安全性',
       enable: '启用',
       disable: '禁用',
       featureDisabled: '功能未开放',
@@ -950,7 +922,6 @@ export default {
     },
     avatar: {
       title: '资料头像',
-      description: '仅支持上传头像图片；静态图片会自动压缩到 20KB 以内后再保存。',
       uploadAction: '上传图片',
       uploadHint: '上传图片时会自动压缩静态图片到 20KB 以内，GIF 需自行控制在 20KB 以内',
       uploadRequired: '请先上传头像图片',

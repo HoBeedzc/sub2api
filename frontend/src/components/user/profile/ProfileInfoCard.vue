@@ -105,14 +105,9 @@
           class="card border border-gray-100 bg-white/90 p-6 dark:border-dark-700 dark:bg-dark-900/50"
         >
           <div class="mb-5 flex items-start justify-between gap-4">
-            <div>
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t('profile.basicsTitle') }}
-              </h3>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t('profile.basicsDescription') }}
-              </p>
-            </div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ t('profile.basicsTitle') }}
+            </h3>
           </div>
 
           <div class="grid gap-6 sm:grid-cols-1 md:grid-cols-2">

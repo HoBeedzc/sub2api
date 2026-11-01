@@ -19,7 +19,7 @@
           {{ t('userSubscriptions.noActiveSubscriptions') }}
         </h3>
         <p class="text-gray-500 dark:text-dark-400">
-          {{ t('userSubscriptions.noActiveSubscriptionsDesc') }}
+          {{ t('userSubscriptions.contactAdminForSubscription') }}
         </p>
       </div>
 

@@ -454,7 +454,6 @@
           <template #empty>
             <EmptyState
               :title="t('keys.noKeysYet')"
-              :description="t('keys.createFirstKey')"
               :action-text="t('keys.createKey')"
               @action="showCreateModal = true"
             />
@@ -537,8 +536,12 @@
               </span>
             </label>
           </div>
-          <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400" aria-live="polite">
-            {{ groups.length === 0 ? t('common.noGroupsAvailable') : t(`keys.providerHints.${createProvider}`) }}
+          <p
+            v-if="providerHintText"
+            class="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400"
+            aria-live="polite"
+          >
+            {{ providerHintText }}
           </p>
         </fieldset>
 
@@ -977,7 +980,6 @@
                 type="datetime-local"
                 class="input"
               />
-              <p class="input-hint">{{ t('keys.expirationDateHint') }}</p>
             </div>
 
             <!-- Current expiration display (only in edit mode) -->
@@ -1538,6 +1540,13 @@ const groupOptions = computed(() =>
 )
 
 const createProvider = ref<KeyGroupProvider>('anthropic')
+// 仅当提示补充了真信息（分组内的模型清单、无可用分组）时才渲染；纯复述选中项的提示已删除。
+const providerHintText = computed(() => {
+  if (groups.value.length === 0) return t('common.noGroupsAvailable')
+  const key = `keys.providerHints.${createProvider.value}`
+  const text = t(key)
+  return text === key ? '' : text
+})
 const createProviderOptions = computed(() => KEY_GROUP_PROVIDERS.map((value) => ({
   value,
   label: t(`keys.providers.${value}`),

@@ -62,9 +62,6 @@ export default {
   // Recharge / Subscription Page
   purchase: {
     title: 'Recharge / Subscription',
-    description: 'Recharge balance or purchase subscription via the embedded page',
-    rechargeDescription: 'Recharge balance via the embedded page',
-    subscriptionDescription: 'Purchase subscription via the embedded page',
     openInNewTab: 'Open in new tab',
     notEnabledTitle: 'Feature not enabled',
     notEnabledDesc: 'The administrator has not enabled the recharge/subscription entry. Please contact admin.',
@@ -106,7 +103,6 @@ export default {
     empty: 'No announcements',
     emptyUnread: 'No unread announcements',
     total: 'announcements',
-    emptyDescription: 'There are no system announcements at this time',
     readStatus: 'You have read this announcement',
     markReadHint: 'Click "Mark as read" to mark this announcement'
   },
@@ -114,10 +110,8 @@ export default {
   // User Subscriptions Page
   userSubscriptions: {
     title: 'My Subscriptions',
-    description: 'View your subscription plans and usage',
     noActiveSubscriptions: 'No Active Subscriptions',
-    noActiveSubscriptionsDesc:
-      "You don't have any active subscriptions. Contact administrator to get one.",
+    contactAdminForSubscription: 'Contact administrator to get a subscription.',
     failedToLoad: 'Failed to load subscriptions',
     status: {
       active: 'Active',
