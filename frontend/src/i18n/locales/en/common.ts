@@ -430,7 +430,6 @@ export default {
     rememberedPassword: 'Remembered your password?',
     // Reset password
     resetPasswordTitle: 'Set New Password',
-    resetPasswordHint: 'Enter your new password below.',
     newPassword: 'New Password',
     newPasswordPlaceholder: 'Enter your new password',
     confirmPassword: 'Confirm Password',

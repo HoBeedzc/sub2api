@@ -69,9 +69,6 @@
             <p class="font-medium text-gray-700 dark:text-gray-300">
               {{ t('profile.totp.notEnabled') }}
             </p>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-              {{ t('profile.totp.notEnabledHint') }}
-            </p>
           </div>
         </div>
         <button

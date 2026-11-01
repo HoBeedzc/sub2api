@@ -137,7 +137,8 @@ describe('AffiliateView', () => {
   it('shows reusable invitation details without rebate claims when rebates are disabled', async () => {
     const wrapper = await mountView()
 
-    expect(wrapper.text()).toContain('affiliate.invitationDescription')
+    expect(wrapper.text()).toContain('affiliate.yourCode')
+    expect(wrapper.text()).toContain('affiliate.inviteLink')
     expect(wrapper.text()).toContain('affiliate.stats.invitedUsers')
     expect(wrapper.text()).not.toContain('affiliate.stats.rebateRate')
     expect(wrapper.text()).not.toContain('affiliate.transfer.title')
@@ -148,7 +149,6 @@ describe('AffiliateView', () => {
     publicSettings.affiliate_enabled = true
     const wrapper = await mountView()
 
-    expect(wrapper.text()).toContain('affiliate.description')
     expect(wrapper.text()).toContain('affiliate.stats.rebateRate')
     expect(wrapper.text()).toContain('affiliate.transfer.title')
     expect(wrapper.text()).toContain('affiliate.invitees.columns.rebate')

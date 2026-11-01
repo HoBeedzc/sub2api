@@ -199,8 +199,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Dashboard',
-      titleKey: 'dashboard.title',
-      descriptionKey: 'dashboard.welcomeMessage'
+      titleKey: 'dashboard.title'
     }
   },
   {
@@ -211,8 +210,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: false,
       title: 'API Keys',
-      titleKey: 'keys.title',
-      descriptionKey: 'keys.description'
+      titleKey: 'keys.title'
     }
   },
   {
@@ -236,8 +234,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Usage Records',
-      titleKey: 'usage.title',
-      descriptionKey: 'usage.description'
+      titleKey: 'usage.title'
     }
   },
   {
@@ -307,8 +304,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Profile',
-      titleKey: 'profile.title',
-      descriptionKey: 'profile.description'
+      titleKey: 'profile.title'
     }
   },
   {
@@ -320,7 +316,6 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'My Subscriptions',
       titleKey: 'userSubscriptions.title',
-      descriptionKey: 'userSubscriptions.description',
       requiresSubscription: true
     }
   },
@@ -333,7 +328,6 @@ const routes: RouteRecordRaw[] = [
       requiresAdmin: false,
       title: 'Purchase Subscription',
       titleKey: 'nav.buySubscription',
-      descriptionKey: 'purchase.description',
       requiresPayment: true
     }
   },

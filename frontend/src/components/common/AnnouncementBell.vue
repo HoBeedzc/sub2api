@@ -170,7 +170,6 @@
                   </div>
                 </div>
                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('announcements.empty') }}</p>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('announcements.emptyDescription') }}</p>
               </div>
             </div>
           </div>

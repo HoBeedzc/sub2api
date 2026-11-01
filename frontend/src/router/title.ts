@@ -50,10 +50,10 @@ export function resolveRouteMetaKeys(
 ): RouteMetaKeys {
   if (route.name === PURCHASE_ROUTE_NAME) {
     if (options.billingMode === 'recharge_only') {
-      return { titleKey: 'nav.recharge', descriptionKey: 'purchase.rechargeDescription' }
+      return { titleKey: 'nav.recharge' }
     }
     if (options.billingMode === 'subscription_only') {
-      return { titleKey: 'nav.subscribe', descriptionKey: 'purchase.subscriptionDescription' }
+      return { titleKey: 'nav.subscribe' }
     }
   }
   return {

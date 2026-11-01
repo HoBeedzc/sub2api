@@ -429,7 +429,6 @@ export default {
     rememberedPassword: '想起密码了？',
     // 重置密码
     resetPasswordTitle: '设置新密码',
-    resetPasswordHint: '请在下方输入您的新密码。',
     newPassword: '新密码',
     newPasswordPlaceholder: '输入新密码',
     confirmPassword: '确认密码',
