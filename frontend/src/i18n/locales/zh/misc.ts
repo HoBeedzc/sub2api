@@ -61,9 +61,6 @@ export default {
   // Recharge / Subscription Page
   purchase: {
     title: '充值/订阅',
-    description: '通过内嵌页面完成充值/订阅',
-    rechargeDescription: '通过内嵌页面完成充值',
-    subscriptionDescription: '通过内嵌页面完成订阅',
     openInNewTab: '新窗口打开',
     notEnabledTitle: '该功能未开启',
     notEnabledDesc: '管理员暂未开启充值/订阅入口，请联系管理员。',
@@ -104,7 +101,6 @@ export default {
     empty: '暂无公告',
     emptyUnread: '暂无未读公告',
     total: '条公告',
-    emptyDescription: '暂时没有任何系统公告',
     readStatus: '您已阅读此公告',
     markReadHint: '点击"已读"标记此公告'
   },
@@ -112,9 +108,8 @@ export default {
   // User Subscriptions Page
   userSubscriptions: {
     title: '我的订阅',
-    description: '查看您的订阅计划和用量',
     noActiveSubscriptions: '暂无有效订阅',
-    noActiveSubscriptionsDesc: '您没有任何有效订阅。请联系管理员获取订阅。',
+    contactAdminForSubscription: '请联系管理员获取订阅。',
     failedToLoad: '加载订阅失败',
     status: {
       active: '有效',

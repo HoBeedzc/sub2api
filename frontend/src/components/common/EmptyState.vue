@@ -29,7 +29,7 @@
     </h3>
 
     <!-- Description -->
-    <p class="empty-state-description">
+    <p v-if="description" class="empty-state-description">
       {{ description }}
     </p>
 

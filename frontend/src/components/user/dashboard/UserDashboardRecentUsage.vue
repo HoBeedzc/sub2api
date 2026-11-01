@@ -9,7 +9,7 @@
         <LoadingSpinner size="lg" />
       </div>
       <div v-else-if="data.length === 0" class="py-8">
-        <EmptyState :title="t('dashboard.noUsageRecords')" :description="t('dashboard.startUsingApi')" />
+        <EmptyState :title="t('dashboard.noUsageRecords')" />
       </div>
       <div v-else class="space-y-3">
         <div v-for="log in data" :key="log.id" class="flex items-center justify-between rounded-xl bg-gray-50 p-4 transition-colors hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800">

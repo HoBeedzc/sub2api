@@ -6,9 +6,6 @@
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
           {{ t('auth.resetPasswordTitle') }}
         </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
-          {{ t('auth.resetPasswordHint') }}
-        </p>
       </div>
 
       <!-- Invalid Link State -->
