@@ -133,8 +133,9 @@ var auditBodySensitiveExactKeys = func() map[string]struct{} {
 		// 字符串值内嵌完整凭证的字段：
 		// proxy_key 为 protocol|host|port|username|password 拼接，
 		// custom_key 为用户自设的平台 API Key 明文，
-		// session 为 Ollama Cloud 用量的浏览器会话 Cookie 明文。
-		"proxy_key", "custom_key", "session",
+		// session 为 Ollama Cloud 用量的浏览器会话 Cookie 明文，
+		// webhook_url 为飞书自定义机器人地址，路径段即机器人令牌。
+		"proxy_key", "custom_key", "session", "webhook_url",
 	}
 	set := make(map[string]struct{}, len(builtin)+len(SensitiveCredentialKeys)+16)
 	for _, k := range builtin {

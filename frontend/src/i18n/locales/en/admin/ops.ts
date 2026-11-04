@@ -691,6 +691,38 @@ export default {
           accountHealthThresholdRange: 'Account health threshold must be between 0 and 100'
         }
       },
+      webhook: {
+        title: 'Webhook Notifications (Feishu)',
+        enable: 'Enable webhook notifications',
+        hint: 'Push admin events (paid orders, account scheduling pauses) to a Feishu custom bot group.',
+        url: 'Webhook URL',
+        secret: 'Signing secret',
+        secretPlaceholder: 'Optional; leave empty if the bot has no signature enabled',
+        secretKeepPlaceholder: 'Configured — leave empty to keep the current secret',
+        secretHint: 'Used for the Feishu bot signature verification (HMAC-SHA256). Stored write-only.',
+        clearSecret: 'Clear the saved secret (check when switching to a bot without signature)',
+        rateLimit: 'Rate limit (per minute)',
+        rateLimitHint: 'Max messages per minute, 1-90. Feishu caps a bot at 100/min.',
+        atUsers: 'Mention user IDs',
+        atUsersPlaceholder: 'ou_xxx,ou_yyy',
+        atUsersHint: 'Optional. Feishu open IDs to mention in each card, comma-separated.',
+        events: 'Events',
+        eventOrderRechargePaid: 'Recharge order paid',
+        eventOrderSubscriptionPaid: 'Subscription order paid',
+        eventAccountAutoPaused: 'Account auto-paused by quota',
+        eventApikeyBreakerTripped: 'API key health breaker tripped',
+        sendTest: 'Send test message',
+        testing: 'Sending…',
+        sendTestHint: 'Uses the URL/secret above; empty fields fall back to the saved config.',
+        testSuccess: 'Test message sent',
+        testFailed: 'Failed to send test message',
+        saveFailed: 'Failed to save webhook notification config; other settings were saved',
+        validation: {
+          urlRequired: 'Webhook URL is required when webhook notifications are enabled',
+          urlHttps: 'Webhook URL must be an https URL',
+          rateLimitRange: 'Rate limit must be between 1 and 90 when webhook notifications are enabled'
+        }
+      },
       settings: {
         title: 'Ops Monitoring Settings',
         loadFailed: 'Failed to load settings',

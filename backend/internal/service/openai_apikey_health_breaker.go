@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -121,6 +122,20 @@ func (s *RateLimitService) ObserveOpenAIAPIKeyHealthFailure(ctx context.Context,
 		zap.Int("upstream_status", statusCode),
 		zap.Time("until", until),
 	)
+	if s.adminNotifyService != nil {
+		s.adminNotifyService.Notify(AdminNotifyEvent{
+			Type:     AdminNotifyEventAPIKeyBreakerTripped,
+			Severity: AdminNotifySeverityCritical,
+			Title:    "🔴 API Key 健康熔断，账号暂停调度",
+			Fields: []AdminNotifyField{
+				{Label: "账号", Value: account.Name},
+				{Label: "平台", Value: account.Platform},
+				{Label: "失败次数", Value: fmt.Sprintf("%d / 阈值 %d（%d 分钟窗口）", count, settings.FailureThreshold, settings.WindowMinutes)},
+				{Label: "暂停至", Value: until.Local().Format("2006-01-02 15:04")},
+				{Label: "上游状态码", Value: strconv.Itoa(statusCode)},
+			},
+		})
+	}
 	return true
 }
 

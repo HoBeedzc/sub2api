@@ -691,6 +691,38 @@ export default {
           accountHealthThresholdRange: '账号健康错误率阈值必须在 0 到 100 之间'
         }
       },
+      webhook: {
+        title: 'Webhook 通知（飞书）',
+        enable: '启用 Webhook 通知',
+        hint: '将管理员事件（订单支付、账号暂停调度等）推送到飞书自定义机器人所在群。',
+        url: 'Webhook 地址',
+        secret: '签名密钥',
+        secretPlaceholder: '可选；机器人未开启签名校验时留空',
+        secretKeepPlaceholder: '已配置——留空保持现有密钥不变',
+        secretHint: '用于飞书机器人签名校验（HMAC-SHA256），只写保存、不回显。',
+        clearSecret: '清除已保存的密钥（切换到未开启签名的机器人时勾选）',
+        rateLimit: '发送频率上限（每分钟）',
+        rateLimitHint: '每分钟最多发送条数，1-90；飞书机器人上限为 100 条/分钟。',
+        atUsers: '卡片提醒用户 ID',
+        atUsersPlaceholder: 'ou_xxx,ou_yyy',
+        atUsersHint: '可选。每条卡片提醒（mention）的飞书用户 open_id，逗号分隔。',
+        events: '通知事件',
+        eventOrderRechargePaid: '充值订单支付成功',
+        eventOrderSubscriptionPaid: '订阅订单支付成功',
+        eventAccountAutoPaused: '账号配额自动暂停',
+        eventApikeyBreakerTripped: 'API Key 健康熔断',
+        sendTest: '发送测试消息',
+        testing: '发送中…',
+        sendTestHint: '使用上方填写的地址/密钥；留空时回退到已保存的配置。',
+        testSuccess: '测试消息已发送',
+        testFailed: '测试消息发送失败',
+        saveFailed: 'Webhook 通知配置保存失败，其余设置已保存',
+        validation: {
+          urlRequired: '启用 Webhook 通知时必须填写 Webhook 地址',
+          urlHttps: 'Webhook 地址必须是 https 链接',
+          rateLimitRange: '启用 Webhook 通知时，发送频率上限必须在 1 到 90 之间'
+        }
+      },
       settings: {
         title: '运维监控设置',
         loadFailed: '加载设置失败',

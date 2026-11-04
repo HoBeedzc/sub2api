@@ -986,6 +986,7 @@ var ProviderSet = wire.NewSet(
 	ProvidePaymentService,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,
+	ProvideAdminNotifyService,
 	ProvideChannelMonitorService,
 	ProvideChannelMonitorRunner,
 	NewChannelMonitorQuotaFetcher,
@@ -1016,9 +1017,20 @@ func ProvideBalanceNotifyService(emailService *EmailService, settingRepo Setting
 }
 
 // ProvidePaymentService creates PaymentService and attaches notification email delivery.
-func ProvidePaymentService(entClient *dbent.Client, registry *payment.Registry, loadBalancer payment.LoadBalancer, redeemService *RedeemService, subscriptionSvc *SubscriptionService, configService *PaymentConfigService, userRepo UserRepository, groupRepo GroupRepository, affiliateService *AffiliateService, notificationEmailService *NotificationEmailService) *PaymentService {
+func ProvidePaymentService(entClient *dbent.Client, registry *payment.Registry, loadBalancer payment.LoadBalancer, redeemService *RedeemService, subscriptionSvc *SubscriptionService, configService *PaymentConfigService, userRepo UserRepository, groupRepo GroupRepository, affiliateService *AffiliateService, notificationEmailService *NotificationEmailService, adminNotifyService *AdminNotifyService) *PaymentService {
 	svc := NewPaymentService(entClient, registry, loadBalancer, redeemService, subscriptionSvc, configService, userRepo, groupRepo, affiliateService)
 	svc.SetNotificationEmailService(notificationEmailService)
+	svc.SetAdminNotifyService(adminNotifyService)
+	return svc
+}
+
+// ProvideAdminNotifyService creates and starts AdminNotifyService (admin
+// webhook notifications, e.g. Feishu bot). Also attaches it to services that
+// emit events before this point in the wire graph.
+func ProvideAdminNotifyService(settingRepo SettingRepository, rateLimitService *RateLimitService) *AdminNotifyService {
+	svc := NewAdminNotifyService(settingRepo)
+	rateLimitService.SetAdminNotifyService(svc)
+	svc.Start()
 	return svc
 }
 
