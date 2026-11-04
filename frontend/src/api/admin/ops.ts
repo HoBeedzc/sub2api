@@ -759,6 +759,33 @@ export interface EmailNotificationConfig {
   }
 }
 
+export interface WebhookNotifyEvents {
+  order_recharge_paid: boolean
+  order_subscription_paid: boolean
+  account_auto_paused: boolean
+  apikey_breaker_tripped: boolean
+}
+
+export interface WebhookNotifyConfig {
+  enabled: boolean
+  provider: string
+  webhook_url: string
+  secret_configured: boolean
+  rate_limit_per_minute: number
+  at_user_ids: string[]
+  events: WebhookNotifyEvents
+}
+
+export interface WebhookNotifyConfigUpdate {
+  enabled: boolean
+  webhook_url: string
+  secret: string
+  clear_secret: boolean
+  rate_limit_per_minute: number
+  at_user_ids: string[]
+  events: WebhookNotifyEvents
+}
+
 export interface OpsMetricThresholds {
   sla_percent_min?: number | null                 // SLA低于此值变红
   ttft_p99_ms_max?: number | null                 // TTFT P99高于此值变红
@@ -1253,6 +1280,22 @@ export async function updateEmailNotificationConfig(config: EmailNotificationCon
   return data
 }
 
+// Admin webhook notification config (Feishu bot)
+export async function getWebhookNotificationConfig(): Promise<WebhookNotifyConfig> {
+  const { data } = await apiClient.get<WebhookNotifyConfig>('/admin/ops/webhook-notification/config')
+  return data
+}
+
+export async function updateWebhookNotificationConfig(config: WebhookNotifyConfigUpdate): Promise<WebhookNotifyConfig> {
+  const { data } = await apiClient.put<WebhookNotifyConfig>('/admin/ops/webhook-notification/config', config)
+  return data
+}
+
+export async function testWebhookNotification(payload: { webhook_url: string; secret: string; at_user_ids?: string[]; ignore_stored_secret?: boolean }): Promise<{ message: string }> {
+  const { data } = await apiClient.post<{ message: string }>('/admin/ops/webhook-notification/test', payload)
+  return data
+}
+
 // Runtime settings (DB-backed)
 export async function getAlertRuntimeSettings(): Promise<OpsAlertRuntimeSettings> {
   const { data } = await apiClient.get<OpsAlertRuntimeSettings>('/admin/ops/runtime/alert')
@@ -1355,6 +1398,9 @@ export const opsAPI = {
   createAlertSilence,
   getEmailNotificationConfig,
   updateEmailNotificationConfig,
+  getWebhookNotificationConfig,
+  updateWebhookNotificationConfig,
+  testWebhookNotification,
   getAlertRuntimeSettings,
   updateAlertRuntimeSettings,
   getRuntimeLogConfig,

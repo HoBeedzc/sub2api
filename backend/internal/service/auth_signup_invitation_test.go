@@ -58,6 +58,9 @@ func (r *signupInvitationAffiliateRepoStub) ThawFrozenQuota(context.Context, int
 func (r *signupInvitationAffiliateRepoStub) TransferQuotaToBalance(context.Context, int64) (float64, float64, error) {
 	panic("unexpected TransferQuotaToBalance call")
 }
+func (r *signupInvitationAffiliateRepoStub) WithdrawQuota(context.Context, int64, float64, string) (*AffiliateWithdrawResult, error) {
+	panic("unexpected WithdrawQuota call")
+}
 func (r *signupInvitationAffiliateRepoStub) ListInvitees(context.Context, int64, int) ([]AffiliateInvitee, error) {
 	panic("unexpected ListInvitees call")
 }

@@ -466,7 +466,17 @@ type openAIQuotaAutoPauseDecision struct {
 	reason      string
 }
 
+// shouldAutoPauseGrokAccountByQuota mirrors the OpenAI wrapper: notify on pause
+// so every scheduling path emitting a Grok quota veto reaches the admin feed.
 func shouldAutoPauseGrokAccountByQuota(account *Account) (bool, openAIQuotaAutoPauseDecision) {
+	paused, decision := evaluateGrokAccountQuotaAutoPause(account)
+	if paused {
+		notifyAdminAccountAutoPausedFromScheduler(account, account.Platform, decision)
+	}
+	return paused, decision
+}
+
+func evaluateGrokAccountQuotaAutoPause(account *Account) (bool, openAIQuotaAutoPauseDecision) {
 	if account == nil || !account.IsGrok() || account.Type != AccountTypeOAuth {
 		return false, openAIQuotaAutoPauseDecision{}
 	}
@@ -530,7 +540,20 @@ func grokQuotaSnapshotStaleForPause(snapshot *xai.QuotaSnapshot, now time.Time) 
 	return now.Sub(updatedAt) >= openAICodexAutoPauseStaleAfter
 }
 
+// shouldAutoPauseOpenAIAccountByQuota evaluates the quota auto-pause veto and,
+// when it fires, reports the pause to the admin webhook notifier (per-account
+// cooldown applies inside). Wrapping here covers every scheduling path — compat
+// scheduling, the advanced scheduler's candidate filter and the WS forwarder's
+// sticky rechecks — so no call site can silently skip the notification.
 func shouldAutoPauseOpenAIAccountByQuota(ctx context.Context, account *Account) (bool, openAIQuotaAutoPauseDecision) {
+	paused, decision := evaluateOpenAIAccountQuotaAutoPause(ctx, account)
+	if paused {
+		notifyAdminAccountAutoPausedFromScheduler(account, account.Platform, decision)
+	}
+	return paused, decision
+}
+
+func evaluateOpenAIAccountQuotaAutoPause(ctx context.Context, account *Account) (bool, openAIQuotaAutoPauseDecision) {
 	if account == nil || !account.IsOpenAI() {
 		return false, openAIQuotaAutoPauseDecision{}
 	}

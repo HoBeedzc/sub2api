@@ -480,6 +480,9 @@ const (
 	// SettingKeyOpsRuntimeLogConfig stores JSON config for runtime log settings.
 	SettingKeyOpsRuntimeLogConfig = "ops_runtime_log_config"
 
+	// SettingKeyAdminWebhookNotifyConfig stores JSON config for admin webhook notifications (e.g. Feishu bot).
+	SettingKeyAdminWebhookNotifyConfig = "admin_webhook_notify_config"
+
 	// =========================
 	// Channel Monitor (渠道监控)
 	// =========================

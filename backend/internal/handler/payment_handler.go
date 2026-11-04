@@ -233,12 +233,12 @@ type purchaseSubscriptionWithBalanceResponse struct {
 	PlanID        int64                 `json:"plan_id"`
 }
 
-func purchaseSubscriptionWithBalanceResponseFromService(r *service.PurchaseSubscriptionWithBalanceResult) *purchaseSubscriptionWithBalanceResponse {
+func purchaseSubscriptionWithBalanceResponseFromService(r *service.PurchaseSubscriptionWithBalanceResult, acceptLanguage string) *purchaseSubscriptionWithBalanceResponse {
 	if r == nil {
 		return nil
 	}
 	return &purchaseSubscriptionWithBalanceResponse{
-		Subscription:  dto.UserSubscriptionFromService(r.Subscription),
+		Subscription:  dto.UserSubscriptionFromService(r.Subscription).Localized(acceptLanguage),
 		Created:       r.Created,
 		Balance:       r.Balance,
 		ChargedAmount: r.ChargedAmount,
@@ -264,7 +264,7 @@ func (h *PaymentHandler) PurchasePlanWithBalance(c *gin.Context) {
 		if err != nil {
 			return nil, err
 		}
-		return purchaseSubscriptionWithBalanceResponseFromService(result), nil
+		return purchaseSubscriptionWithBalanceResponseFromService(result, c.GetHeader("Accept-Language")), nil
 	})
 }
 

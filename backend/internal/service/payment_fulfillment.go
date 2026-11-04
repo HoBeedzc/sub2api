@@ -489,7 +489,11 @@ func (s *PaymentService) markCompleted(ctx context.Context, o *dbent.PaymentOrde
 }
 
 func (s *PaymentService) dispatchPaymentFulfillmentNotification(o *dbent.PaymentOrder, auditAction string) {
-	if s == nil || s.notificationEmailService == nil || o == nil {
+	if s == nil || o == nil {
+		return
+	}
+	s.notifyAdminWebhookOrderPaid(o, auditAction)
+	if s.notificationEmailService == nil {
 		return
 	}
 	go func() {
@@ -508,6 +512,54 @@ func (s *PaymentService) dispatchPaymentFulfillmentNotification(o *dbent.Payment
 			slog.Warn("payment fulfillment notification email failed", "order_id", o.ID, "action", auditAction, "err", err.Error())
 		}
 	}()
+}
+
+// notifyAdminWebhookOrderPaid enqueues an admin webhook card for a fulfilled
+// order. markCompleted only dispatches on the successful RECHARGING→COMPLETED
+// transition with no prior audit entry, so each order notifies at most once.
+func (s *PaymentService) notifyAdminWebhookOrderPaid(o *dbent.PaymentOrder, auditAction string) {
+	if s.adminNotifyService == nil {
+		return
+	}
+	orderID := strconv.FormatInt(o.ID, 10)
+	user := firstNonEmpty(o.UserName, o.UserEmail)
+	// 到账金额 = credited value (Amount); 实付金额 = money actually charged
+	// (PayAmount, verified against the provider callback). Both matter to an
+	// admin, so the card carries two explicitly labelled columns.
+	credited := fmt.Sprintf("%.2f", o.Amount)
+	paid := fmt.Sprintf("%.2f", o.PayAmount)
+	switch auditAction {
+	case "RECHARGE_SUCCESS":
+		s.adminNotifyService.Notify(AdminNotifyEvent{
+			Type:     AdminNotifyEventOrderRechargePaid,
+			Severity: AdminNotifySeverityInfo,
+			Title:    "💰 充值订单支付成功",
+			Fields: []AdminNotifyField{
+				{Label: "订单号", Value: orderID},
+				{Label: "到账金额", Value: credited},
+				{Label: "实付金额", Value: paid},
+				{Label: "用户", Value: user},
+				{Label: "支付方式", Value: firstNonEmpty(o.PaymentType, "-")},
+			},
+		})
+	case "SUBSCRIPTION_SUCCESS":
+		days := "-"
+		if o.SubscriptionDays != nil {
+			days = strconv.Itoa(*o.SubscriptionDays)
+		}
+		s.adminNotifyService.Notify(AdminNotifyEvent{
+			Type:     AdminNotifyEventOrderSubscriptionPaid,
+			Severity: AdminNotifySeverityInfo,
+			Title:    "🎉 订阅订单支付成功",
+			Fields: []AdminNotifyField{
+				{Label: "订单号", Value: orderID},
+				{Label: "到账金额", Value: credited},
+				{Label: "实付金额", Value: paid},
+				{Label: "用户", Value: user},
+				{Label: "订阅天数", Value: days},
+			},
+		})
+	}
 }
 
 func (s *PaymentService) sendBalanceRechargeSuccessNotification(ctx context.Context, o *dbent.PaymentOrder) error {

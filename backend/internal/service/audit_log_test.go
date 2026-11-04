@@ -76,6 +76,24 @@ func TestRedactAuditBody_BareSessionKeyRedacted(t *testing.T) {
 	}
 }
 
+// webhook_url（飞书自定义机器人配置）路径段即机器人令牌，必须整体擦除，
+// 否则 PUT 配置 / POST 测试的审计记录会持久化该令牌。
+func TestRedactAuditBody_WebhookURLRedacted(t *testing.T) {
+	raw := []byte(`{"enabled": true, "webhook_url": "https://open.feishu.cn/open-apis/bot/v2/hook/bot-token-canary", "secret": "s"}`)
+	out := RedactAuditBody(raw, "application/json")
+
+	if strings.Contains(out, "bot-token-canary") {
+		t.Fatalf("redacted body still contains the webhook bot token: %s", out)
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, out)
+	}
+	if parsed["enabled"] != true {
+		t.Fatalf("non-sensitive fields should be preserved: %s", out)
+	}
+}
+
 // TestRedactAuditBody_AuthoritativeTablesSynced 覆盖曾经漏网的凭证字段：
 // 账号 credentials 敏感子键、支付渠道无分隔符密钥、字符串值内嵌凭证的 proxy_key / custom_key，
 // 以及 camelCase 等命名变体（归一化比对）。

@@ -6,7 +6,7 @@ import { opsAPI } from '@/api/admin/ops'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
-import type { OpsAlertRuntimeSettings, EmailNotificationConfig, AlertSeverity, OpsAdvancedSettings, OpsMetricThresholds } from '../types'
+import type { OpsAlertRuntimeSettings, EmailNotificationConfig, WebhookNotifyConfig, AlertSeverity, OpsAdvancedSettings, OpsMetricThresholds } from '../types'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -28,6 +28,13 @@ const saving = ref(false)
 const runtimeSettings = ref<OpsAlertRuntimeSettings | null>(null)
 // 邮件通知配置
 const emailConfig = ref<EmailNotificationConfig | null>(null)
+// Webhook 通知配置（飞书机器人）
+const webhookConfig = ref<WebhookNotifyConfig | null>(null)
+// Webhook 签名密钥：只写字段，空串表示保留已存值
+const webhookSecretInput = ref('')
+// 显式清除已保存密钥（切换到未开启签名的机器人时使用）
+const webhookClearSecret = ref(false)
+const sendingWebhookTest = ref(false)
 // 高级设置
 const advancedSettings = ref<OpsAdvancedSettings | null>(null)
 // 指标阈值配置
@@ -38,19 +45,37 @@ const metricThresholds = ref<OpsMetricThresholds>({
   upstream_error_rate_percent_max: 5
 })
 
+// Webhook 配置加载失败（如混合版本部署：新前端 + 旧后端 404）时的安全默认态
+function defaultWebhookNotifyConfig(): WebhookNotifyConfig {
+  return {
+    enabled: false,
+    provider: 'feishu',
+    webhook_url: '',
+    secret_configured: false,
+    rate_limit_per_minute: 50,
+    at_user_ids: [],
+    events: { order_recharge_paid: true, order_subscription_paid: true, account_auto_paused: true, apikey_breaker_tripped: true }
+  }
+}
+
 // 加载所有配置
 async function loadAllSettings() {
   settingsLoaded.value = false
   loading.value = true
   try {
-    const [runtime, email, advanced, thresholds] = await Promise.all([
+    const [runtime, email, advanced, thresholds, webhook] = await Promise.all([
       opsAPI.getAlertRuntimeSettings(),
       opsAPI.getEmailNotificationConfig(),
       opsAPI.getAdvancedSettings(),
-      opsAPI.getMetricThresholds()
+      opsAPI.getMetricThresholds(),
+      // 混合版本部署时该接口可能 404：回退默认配置，不阻断整个弹窗加载
+      opsAPI.getWebhookNotificationConfig().catch(() => null)
     ])
     runtimeSettings.value = runtime
     emailConfig.value = email
+    webhookConfig.value = webhook ?? defaultWebhookNotifyConfig()
+    webhookSecretInput.value = ''
+    webhookClearSecret.value = false
     advancedSettings.value = advanced
     // 兼容旧 payload：后端未返回该字段时补默认值，保证表单可绑定
     if (advancedSettings.value && !advancedSettings.value.openai_account_quota_auto_pause) {
@@ -126,6 +151,39 @@ function removeRecipient(target: 'alert' | 'report', email: string) {
   if (idx >= 0) list.splice(idx, 1)
 }
 
+// Webhook @用户列表：逗号分隔输入 ↔ 数组
+const webhookAtUserIDsInput = computed<string>({
+  get() {
+    return (webhookConfig.value?.at_user_ids ?? []).join(',')
+  },
+  set(val: string) {
+    if (!webhookConfig.value) return
+    webhookConfig.value.at_user_ids = val.split(',').map((s) => s.trim()).filter(Boolean)
+  }
+})
+
+// 发送 Webhook 测试消息：空 URL/secret 时后端回退到已存配置；
+// 勾选清除密钥且未输入新密钥时，按无签名配置发送
+async function sendWebhookTest() {
+  if (sendingWebhookTest.value || !webhookConfig.value) return
+  const typedSecret = webhookSecretInput.value.trim()
+  sendingWebhookTest.value = true
+  try {
+    const result = await opsAPI.testWebhookNotification({
+      webhook_url: webhookConfig.value.webhook_url.trim(),
+      secret: typedSecret,
+      at_user_ids: webhookConfig.value.at_user_ids,
+      ignore_stored_secret: typedSecret === '' && webhookClearSecret.value
+    })
+    appStore.showSuccess(result.message || t('admin.ops.webhook.testSuccess'))
+  } catch (err: any) {
+    console.error('[OpsSettingsDialog] Failed to send webhook test', err)
+    appStore.showError(err?.response?.data?.message || err?.response?.data?.detail || t('admin.ops.webhook.testFailed'))
+  } finally {
+    sendingWebhookTest.value = false
+  }
+}
+
 // OpenAI 账号配额自动暂停：后端按 0~1 分数存储，UI 按百分比(0~100)展示
 const quotaAutoPause5hPercent = computed<number | null>({
   get() {
@@ -161,6 +219,23 @@ const validation = computed(() => {
   }
 
   // 邮件配置: 启用但无收件人时不阻断保存, 保存时会自动禁用
+
+  // Webhook 通知配置
+  if (webhookConfig.value) {
+    if (webhookConfig.value.enabled && !webhookConfig.value.webhook_url.trim()) {
+      errors.push(t('admin.ops.webhook.validation.urlRequired'))
+    }
+    if (webhookConfig.value.webhook_url.trim() && !/^https:\/\//.test(webhookConfig.value.webhook_url.trim())) {
+      errors.push(t('admin.ops.webhook.validation.urlHttps'))
+    }
+    // 频率上限：启用时必须落在 1–90（与文案一致）；清空/越界由保存侧兜底
+    if (webhookConfig.value.enabled) {
+      const rate = webhookConfig.value.rate_limit_per_minute
+      if (!Number.isFinite(rate) || rate < 1 || rate > 90) {
+        errors.push(t('admin.ops.webhook.validation.rateLimitRange'))
+      }
+    }
+  }
 
   // 验证高级设置
   if (advancedSettings.value) {
@@ -198,6 +273,12 @@ const validation = computed(() => {
   return { valid: errors.length === 0, errors }
 })
 
+// Webhook 频率上限兜底：输入被清空（v-model.number 变 ''）或越界时回退默认值，
+// 避免向后端发送非法数字触发绑定 400；启用态下的越界已由 validation 拦截
+function normalizeWebhookRateLimit(rate: number): number {
+  return Number.isFinite(rate) && rate >= 1 && rate <= 90 ? rate : 50
+}
+
 // 保存所有配置
 async function saveAllSettings() {
   if (loading.value || !settingsLoaded.value || saving.value) return
@@ -207,6 +288,8 @@ async function saveAllSettings() {
   }
 
   saving.value = true
+  // 混合版本部署时 webhook 接口可能 404：只失败这一块，不拖垮其余设置的保存
+  let webhookSaveFailed = false
   try {
     // 无收件人时自动禁用邮件通知
     if (emailConfig.value) {
@@ -221,9 +304,27 @@ async function saveAllSettings() {
       runtimeSettings.value ? opsAPI.updateAlertRuntimeSettings(runtimeSettings.value) : Promise.resolve(),
       emailConfig.value ? opsAPI.updateEmailNotificationConfig(emailConfig.value) : Promise.resolve(),
       advancedSettings.value ? opsAPI.updateAdvancedSettings(advancedSettings.value) : Promise.resolve(),
-      opsAPI.updateMetricThresholds(metricThresholds.value)
+      opsAPI.updateMetricThresholds(metricThresholds.value),
+      webhookConfig.value
+        ? Promise.resolve(opsAPI.updateWebhookNotificationConfig({
+            enabled: webhookConfig.value.enabled,
+            webhook_url: webhookConfig.value.webhook_url.trim(),
+            secret: webhookSecretInput.value.trim(),
+            // 未输入新密钥且勾选清除时才清除；输入了新密钥即为替换
+            clear_secret: webhookSecretInput.value.trim() === '' && webhookClearSecret.value,
+            rate_limit_per_minute: normalizeWebhookRateLimit(webhookConfig.value.rate_limit_per_minute),
+            at_user_ids: webhookConfig.value.at_user_ids,
+            events: webhookConfig.value.events
+          })).catch((err: any) => {
+            webhookSaveFailed = true
+            console.error('[OpsSettingsDialog] Failed to save webhook notification config', err)
+          })
+        : Promise.resolve()
     ])
     appStore.showSuccess(t('admin.ops.settings.saveSuccess'))
+    if (webhookSaveFailed) {
+      appStore.showError(t('admin.ops.webhook.saveFailed'))
+    }
     emit('saved')
     emit('close')
   } catch (err: any) {
@@ -370,6 +471,113 @@ async function saveAllSettings() {
             <div v-if="emailConfig.report.weekly_summary_enabled">
               <input v-model="emailConfig.report.weekly_summary_schedule" type="text" class="input" placeholder="0 9 * * 1" />
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Webhook 通知配置（飞书机器人） -->
+      <div v-if="webhookConfig" class="rounded-2xl bg-gray-50 p-4 dark:bg-dark-700/50">
+        <h4 class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.ops.webhook.title') }}</h4>
+
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <label class="font-medium text-gray-900 dark:text-white">{{ t('admin.ops.webhook.enable') }}</label>
+              <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.ops.webhook.hint') }}</p>
+            </div>
+            <Toggle v-model="webhookConfig.enabled" />
+          </div>
+
+          <div>
+            <label class="input-label">{{ t('admin.ops.webhook.url') }}</label>
+            <input
+              v-model="webhookConfig.webhook_url"
+              type="text"
+              class="input font-mono text-sm"
+              placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..."
+            />
+          </div>
+
+          <div>
+            <label class="input-label">{{ t('admin.ops.webhook.secret') }}</label>
+            <input
+              v-model="webhookSecretInput"
+              type="password"
+              class="input font-mono text-sm"
+              :placeholder="webhookConfig.secret_configured ? t('admin.ops.webhook.secretKeepPlaceholder') : t('admin.ops.webhook.secretPlaceholder')"
+            />
+            <p class="mt-1 text-xs text-gray-500">{{ t('admin.ops.webhook.secretHint') }}</p>
+            <label v-if="webhookConfig.secret_configured" class="mt-1 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+              <input
+                v-model="webhookClearSecret"
+                type="checkbox"
+                class="h-3.5 w-3.5"
+                :disabled="webhookSecretInput.trim() !== ''"
+              />
+              {{ t('admin.ops.webhook.clearSecret') }}
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label class="input-label">{{ t('admin.ops.webhook.rateLimit') }}</label>
+              <input
+                v-model.number="webhookConfig.rate_limit_per_minute"
+                type="number"
+                min="1"
+                max="90"
+                class="input"
+              />
+              <p class="mt-1 text-xs text-gray-500">{{ t('admin.ops.webhook.rateLimitHint') }}</p>
+            </div>
+            <div>
+              <label class="input-label">{{ t('admin.ops.webhook.atUsers') }}</label>
+              <input
+                v-model="webhookAtUserIDsInput"
+                type="text"
+                class="input font-mono text-sm"
+                :placeholder="t('admin.ops.webhook.atUsersPlaceholder')"
+              />
+              <p class="mt-1 text-xs text-gray-500">{{ t('admin.ops.webhook.atUsersHint') }}</p>
+            </div>
+          </div>
+
+          <div>
+            <label class="input-label">{{ t('admin.ops.webhook.events') }}</label>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.webhook.eventOrderRechargePaid') }}</label>
+                <Toggle v-model="webhookConfig.events.order_recharge_paid" />
+              </div>
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.webhook.eventOrderSubscriptionPaid') }}</label>
+                <Toggle v-model="webhookConfig.events.order_subscription_paid" />
+              </div>
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.webhook.eventAccountAutoPaused') }}</label>
+                <Toggle v-model="webhookConfig.events.account_auto_paused" />
+              </div>
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.webhook.eventApikeyBreakerTripped') }}</label>
+                <Toggle v-model="webhookConfig.events.apikey_breaker_tripped" />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button
+              class="btn btn-secondary"
+              type="button"
+              :disabled="sendingWebhookTest"
+              @click="sendWebhookTest"
+            >
+              <svg v-if="sendingWebhookTest" class="mr-1 h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              {{ sendingWebhookTest ? t('admin.ops.webhook.testing') : t('admin.ops.webhook.sendTest') }}
+            </button>
+            <span class="text-xs text-gray-500">{{ t('admin.ops.webhook.sendTestHint') }}</span>
           </div>
         </div>
       </div>

@@ -213,6 +213,11 @@ func registerOpsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		ops.GET("/email-notification/config", h.Admin.Ops.GetEmailNotificationConfig)
 		ops.PUT("/email-notification/config", h.Admin.Ops.UpdateEmailNotificationConfig)
 
+		// Admin webhook notification config (Feishu bot, DB-backed)
+		ops.GET("/webhook-notification/config", h.Admin.AdminNotify.GetWebhookNotifyConfig)
+		ops.PUT("/webhook-notification/config", h.Admin.AdminNotify.UpdateWebhookNotifyConfig)
+		ops.POST("/webhook-notification/test", h.Admin.AdminNotify.TestWebhookNotify)
+
 		// Runtime settings (DB-backed)
 		runtime := ops.Group("/runtime")
 		{

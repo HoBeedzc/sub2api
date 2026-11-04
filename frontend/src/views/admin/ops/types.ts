@@ -12,6 +12,7 @@ export type {
   MetricType,
   Operator,
   EmailNotificationConfig,
+  WebhookNotifyConfig,
   OpsDistributedLockSettings,
   OpsAlertRuntimeSettings,
   OpsMetricThresholds,
