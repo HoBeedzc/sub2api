@@ -54,7 +54,7 @@ function defaultWebhookNotifyConfig(): WebhookNotifyConfig {
     secret_configured: false,
     rate_limit_per_minute: 50,
     at_user_ids: [],
-    events: { order_recharge_paid: true, order_subscription_paid: true, account_auto_paused: true, apikey_breaker_tripped: true }
+    events: { order_offline_pending: true, order_recharge_paid: true, order_subscription_paid: true, account_auto_paused: true, apikey_breaker_tripped: true }
   }
 }
 
@@ -545,6 +545,10 @@ async function saveAllSettings() {
           <div>
             <label class="input-label">{{ t('admin.ops.webhook.events') }}</label>
             <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.webhook.eventOrderOfflinePending') }}</label>
+                <Toggle v-model="webhookConfig.events.order_offline_pending" />
+              </div>
               <div class="flex items-center justify-between">
                 <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.webhook.eventOrderRechargePaid') }}</label>
                 <Toggle v-model="webhookConfig.events.order_recharge_paid" />

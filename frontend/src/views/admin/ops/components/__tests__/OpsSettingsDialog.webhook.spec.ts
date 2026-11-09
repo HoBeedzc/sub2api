@@ -16,7 +16,7 @@ const defaultWebhookConfig = {
   secret_configured: true,
   rate_limit_per_minute: 50,
   at_user_ids: [],
-  events: { order_recharge_paid: true, order_subscription_paid: true, account_auto_paused: true, apikey_breaker_tripped: true },
+  events: { order_offline_pending: true, order_recharge_paid: true, order_subscription_paid: true, account_auto_paused: true, apikey_breaker_tripped: true },
 }
 
 const { opsAPI, showError, showSuccess } = vi.hoisted(() => ({

@@ -20,6 +20,7 @@ import (
 
 // Admin notify event types; each maps to a toggle in AdminWebhookNotifyEvents.
 const (
+	AdminNotifyEventOrderOfflinePending   = "order_offline_pending"
 	AdminNotifyEventOrderRechargePaid     = "order_recharge_paid"
 	AdminNotifyEventOrderSubscriptionPaid = "order_subscription_paid"
 	AdminNotifyEventAccountAutoPaused     = "account_auto_paused"
@@ -253,6 +254,8 @@ func (s *AdminNotifyService) deliver(ctx context.Context, ev AdminNotifyEvent) {
 
 func adminNotifyEventEnabled(cfg *AdminWebhookNotifyConfig, eventType string) bool {
 	switch eventType {
+	case AdminNotifyEventOrderOfflinePending:
+		return cfg.Events.OrderOfflinePending
 	case AdminNotifyEventOrderRechargePaid:
 		return cfg.Events.OrderRechargePaid
 	case AdminNotifyEventOrderSubscriptionPaid:

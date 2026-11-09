@@ -44,7 +44,7 @@ describe('ops settings load guard', () => {
     opsAPI.getEmailNotificationConfig.mockResolvedValue({ alert: { enabled: false }, report: { enabled: false } })
     opsAPI.getAdvancedSettings.mockResolvedValue({ data_retention: { error_log_retention_days: 7, minute_metrics_retention_days: 7, hourly_metrics_retention_days: 7 } })
     opsAPI.getMetricThresholds.mockResolvedValue({ sla_percent_min: 98 })
-    opsAPI.getWebhookNotificationConfig.mockResolvedValue({ enabled: false, provider: 'feishu', webhook_url: '', secret_configured: false, rate_limit_per_minute: 50, at_user_ids: [], events: { order_recharge_paid: true, order_subscription_paid: true, account_auto_paused: true, apikey_breaker_tripped: true } })
+    opsAPI.getWebhookNotificationConfig.mockResolvedValue({ enabled: false, provider: 'feishu', webhook_url: '', secret_configured: false, rate_limit_per_minute: 50, at_user_ids: [], events: { order_offline_pending: true, order_recharge_paid: true, order_subscription_paid: true, account_auto_paused: true, apikey_breaker_tripped: true } })
   })
   afterEach(() => { vi.restoreAllMocks() })
   it('blocks saving while any settings request is still loading', async () => {

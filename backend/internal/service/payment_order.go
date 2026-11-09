@@ -116,6 +116,12 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 			Save(ctx)
 		return nil, err
 	}
+	// Notify only after the provider step succeeded: a failed provider call
+	// flips the order to FAILED above, and announcing a dead order would send
+	// admins chasing a card that no longer needs action.
+	if payment.GetBasePaymentType(order.PaymentType) == payment.TypeOffline {
+		s.notifyAdminWebhookOrderOfflinePending(order)
+	}
 	return resp, nil
 }
 

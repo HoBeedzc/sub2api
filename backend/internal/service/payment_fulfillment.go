@@ -562,6 +562,28 @@ func (s *PaymentService) notifyAdminWebhookOrderPaid(o *dbent.PaymentOrder, audi
 	}
 }
 
+// notifyAdminWebhookOrderOfflinePending announces a newly created offline
+// (manual transfer) order that awaits admin confirmation. Both amount columns
+// are shown: confirmation is about matching what the user actually transferred
+// (PayAmount, fee-rate adjusted) against the credited amount (Amount).
+func (s *PaymentService) notifyAdminWebhookOrderOfflinePending(o *dbent.PaymentOrder) {
+	if s.adminNotifyService == nil {
+		return
+	}
+	s.adminNotifyService.Notify(AdminNotifyEvent{
+		Type:     AdminNotifyEventOrderOfflinePending,
+		Severity: AdminNotifySeverityWarning,
+		Title:    "🧾 新线下收款订单待确认",
+		Fields: []AdminNotifyField{
+			{Label: "订单号", Value: strconv.FormatInt(o.ID, 10)},
+			{Label: "到账金额", Value: fmt.Sprintf("%.2f", o.Amount)},
+			{Label: "实付金额", Value: fmt.Sprintf("%.2f", o.PayAmount)},
+			{Label: "用户", Value: firstNonEmpty(o.UserName, o.UserEmail)},
+			{Label: "过期时间", Value: o.ExpiresAt.Local().Format("2006-01-02 15:04")},
+		},
+	})
+}
+
 func (s *PaymentService) sendBalanceRechargeSuccessNotification(ctx context.Context, o *dbent.PaymentOrder) error {
 	currentBalance := ""
 	if s.userRepo != nil {

@@ -6,6 +6,7 @@ package service
 
 // AdminWebhookNotifyEvents toggles individual admin webhook notification events.
 type AdminWebhookNotifyEvents struct {
+	OrderOfflinePending   bool `json:"order_offline_pending"`
 	OrderRechargePaid     bool `json:"order_recharge_paid"`
 	OrderSubscriptionPaid bool `json:"order_subscription_paid"`
 	AccountAutoPaused     bool `json:"account_auto_paused"`
@@ -52,6 +53,7 @@ func defaultAdminWebhookNotifyConfig() *AdminWebhookNotifyConfig {
 		RateLimitPerMinute: adminWebhookNotifyRateLimitDefault,
 		AtUserIDs:          []string{},
 		Events: AdminWebhookNotifyEvents{
+			OrderOfflinePending:   true,
 			OrderRechargePaid:     true,
 			OrderSubscriptionPaid: true,
 			AccountAutoPaused:     true,
