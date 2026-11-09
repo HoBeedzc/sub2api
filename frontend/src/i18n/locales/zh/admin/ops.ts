@@ -707,6 +707,7 @@ export default {
         atUsersPlaceholder: 'ou_xxx,ou_yyy',
         atUsersHint: '可选。每条卡片提醒（mention）的飞书用户 open_id，逗号分隔。',
         events: '通知事件',
+        eventOrderOfflinePending: '线下收款订单待确认',
         eventOrderRechargePaid: '充值订单支付成功',
         eventOrderSubscriptionPaid: '订阅订单支付成功',
         eventAccountAutoPaused: '账号配额自动暂停',

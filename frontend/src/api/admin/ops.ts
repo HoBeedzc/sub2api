@@ -760,6 +760,7 @@ export interface EmailNotificationConfig {
 }
 
 export interface WebhookNotifyEvents {
+  order_offline_pending: boolean
   order_recharge_paid: boolean
   order_subscription_paid: boolean
   account_auto_paused: boolean

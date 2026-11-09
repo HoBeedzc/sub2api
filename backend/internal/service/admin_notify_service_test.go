@@ -54,6 +54,7 @@ func TestAdminNotifyLoadStoredConfig_DefaultsAndSeed(t *testing.T) {
 	require.Equal(t, adminWebhookNotifyRateLimitDefault, cfg.RateLimitPerMinute)
 	require.True(t, cfg.Events.OrderRechargePaid)
 	require.True(t, cfg.Events.AccountAutoPaused)
+	require.True(t, cfg.Events.OrderOfflinePending)
 
 	// Missing key must NOT be seeded from the read path: a default write-back
 	// racing a concurrent first save could clobber the just-saved config.
@@ -535,6 +536,32 @@ func TestAdminNotifySendTest_NoURLConfigured(t *testing.T) {
 }
 
 // ---------- hook points ----------
+
+func TestNotifyAdminWebhookOrderOfflinePending_EnqueuesPendingCard(t *testing.T) {
+	repo := newAdminNotifySettingRepo()
+	notify := NewAdminNotifyService(repo)
+	ps := &PaymentService{adminNotifyService: notify}
+
+	exp := time.Date(2026, 11, 9, 12, 30, 0, 0, time.UTC)
+	ps.notifyAdminWebhookOrderOfflinePending(&dbent.PaymentOrder{
+		// PayAmount differs from Amount (fee-rate adjustment): confirmation is
+		// about matching what the user actually transferred.
+		ID: 66, Amount: 99.5, PayAmount: 103.48, UserName: "alice", UserEmail: "a@x.com",
+		PaymentType: "offline", ExpiresAt: exp,
+	})
+
+	require.Equal(t, 1, len(notify.queue))
+	ev := <-notify.queue
+	require.Equal(t, AdminNotifyEventOrderOfflinePending, ev.Type)
+	require.Equal(t, AdminNotifySeverityWarning, ev.Severity)
+	require.Equal(t, "66", fieldValue(ev, "订单号"))
+	require.Equal(t, "99.50", fieldValue(ev, "到账金额"))
+	require.Equal(t, "103.48", fieldValue(ev, "实付金额"))
+	require.Equal(t, "alice", fieldValue(ev, "用户"))
+	// Expiry is rendered in local time; compare dynamically so the assertion
+	// does not depend on whether the runner's TZ is resolvable.
+	require.Contains(t, fieldValue(ev, "过期时间"), exp.Local().Format("15:04"))
+}
 
 func TestNotifyAdminWebhookOrderPaid_EnqueuesBothTypes(t *testing.T) {
 	repo := newAdminNotifySettingRepo()

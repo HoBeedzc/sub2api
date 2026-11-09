@@ -707,6 +707,7 @@ export default {
         atUsersPlaceholder: 'ou_xxx,ou_yyy',
         atUsersHint: 'Optional. Feishu open IDs to mention in each card, comma-separated.',
         events: 'Events',
+        eventOrderOfflinePending: 'Offline payment order awaiting confirmation',
         eventOrderRechargePaid: 'Recharge order paid',
         eventOrderSubscriptionPaid: 'Subscription order paid',
         eventAccountAutoPaused: 'Account auto-paused by quota',
